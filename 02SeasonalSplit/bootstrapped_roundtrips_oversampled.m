@@ -31,11 +31,15 @@ Settings.Seasons.SON = date2doy(datenum(2000, 9,1):datenum(2000,12,1)-1);
 Settings.Seasons.All = 1:1:366;
 
 %how many bands for each index?
-Settings.NBands = 6;
+%these will overlap significantly - that's the plan
+Settings.NBands = 50;
+
+%and how wide should the bands be relative to the data range?
+Settings.BandWidth = 1./4;
 
 %bootstrap properties
-Settings.BS.Straps  = 10000;
-Settings.BS.Samples = 1000;
+Settings.BS.Straps  = 5000;
+Settings.BS.Samples = 2000;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% load data
@@ -163,22 +167,25 @@ AverageFlightTime = nanmean(Results(:,7)).*60;
 
 
 Seasons = fieldnames(Settings.Seasons);
-BSOut    = NaN(numel(Settings.Indices),numel(Seasons),Settings.NBands-1,5); %5 is the summary stats
+BSOut    = NaN(numel(Settings.Indices),numel(Seasons),Settings.NBands,5); %5 is the summary stats
 BandsOut = NaN(numel(Settings.Indices),Settings.NBands);
 
 %retain N in each band
-NPerBand = NaN(numel(Settings.Indices),numel(Seasons),Settings.NBands-1);
+NPerBand = NaN(numel(Settings.Indices),numel(Seasons),Settings.NBands);
 
 
 
 for iIndex=1:1:numel(Settings.Indices);
+  disp(['Processing ',Settings.Indices{iIndex}])
   
   %pull out values
   Index = Results(:,7+iIndex);
   
-  %split up into bands, then loop over them
-  Bands = linspace(prctile(Index,5),prctile(Index,95),Settings.NBands);
+  %how wide are the (overlapping) bands?
+  BandWidth = Settings.BandWidth .* (prctile(Index,95) - prctile(Index,5));
+  Bands = linspace(prctile(Index,10),prctile(Index,90),Settings.NBands);
   BandsOut(iIndex,:) = Bands;
+
   
   %loop over season
   for iSeason=1:1:numel(Seasons)
@@ -190,7 +197,9 @@ for iIndex=1:1:numel(Settings.Indices);
     for iBand=1:1:numel(Bands)-1
       
       %find ponts in this band
-      InBand = find(Index >= Bands(iBand) & Index <= Bands(iBand+1));
+      BandRange = Bands(iBand) + [-1,1].*0.5.*BandWidth;
+      
+      InBand = find(Index >= BandRange(1) & Index <= BandRange(2));
       
       %and in season
       InBand = intersect(InBand,ThisSeason);
@@ -232,8 +241,8 @@ clear Results
 Results = BSOut;
 clear BSOut
 
-%shift bin edges to bin centres
-BandsOut = BandsOut(:,1:end-1)+ mean(diff(BandsOut,1,2),2)./2;
+% % %shift bin edges to bin centres
+% % BandsOut = BandsOut(:,1:end-1)+ mean(diff(BandsOut,1,2),2)./2;
 
 %scale times to minutes
 Results = (Results-1) .*AverageFlightTime;
@@ -262,21 +271,23 @@ for iSeason=1:1:numel(Seasons)
     
     %2 stdev band
     ys = [squeeze(Results(iIndex,iSeason,:,5));squeeze(Results(iIndex,iSeason,end:-1:1,1))]';
+    ys = inpaint_nans(ys);
     patch(xs,ys,[1,1,1].*0.9,'edgecolor','none'); hold on
     
     %1 stdev band
     ys = [squeeze(Results(iIndex,iSeason,:,4));squeeze(Results(iIndex,iSeason,end:-1:1,2))]';
+    ys = inpaint_nans(ys);
     patch(xs,ys,[1,1,1].*0.6,'edgecolor','none')    
     
     plot(BandsOut(iIndex,:),squeeze(Results(iIndex,iSeason,:,3)),'k-');
     hold on
     
-    %also print number of flights contributing
-    for iBand=1:1:numel(BandsOut(iIndex,:))
-      x = BandsOut(iIndex,iBand);
-      y = Results(iIndex,iSeason,iBand,5);
-      text(x,y,num2str(NPerBand(iIndex,iSeason,iBand)),'fontsize',6);
-    end
+% % %     %also print number of flights contributing
+% % %     for iBand=1:1:numel(BandsOut(iIndex,:))
+% % %       x = BandsOut(iIndex,iBand);
+% % %       y = Results(iIndex,iSeason,iBand,5);
+% % %       text(x,y,num2str(NPerBand(iIndex,iSeason,iBand)),'fontsize',6);
+% % %     end
     
     if iSeason == 1; title(Settings.Indices{iIndex}); end
     if iIndex  == 1; ylabel(Seasons{iSeason}); end
