@@ -7,8 +7,9 @@ clearvars
 %
 %
 %additional data checks:
-%1. remove any data within 100km of start and end of flight, to avoid looping around the airport before or after departure
-%2. modified to retain unique identifiers for individual flights, to identify any issues due to equipment change
+%A. remove any data within 100km of start and end of flight, to avoid looping around the airport before or after departure
+%B. modified to retain unique identifiers for individual flights, to identify any issues due to equipment change
+%C. remove asc and desc phases of flight, at start and end (not currently used, as not convinced the asc and desc segments aren't part of the science data!)
 %
 %Corwin Wright, c.wright@bath.ac.uk, 2020/12/24
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -59,7 +60,7 @@ for iFlight = 1:1:numel(Flights)
 
  if mod(iFlight,100) == 0; textprogressbar(iFlight./numel(Flights).*100); end
  
- try
+%  try
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   % process metadata
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -129,7 +130,35 @@ for iFlight = 1:1:numel(Flights)
   Data.UTC_time(Bad) = NaN;
   clear Bad distanceFromArr distanceFromDep
   
-  %2. ... TBD
+
+  
+% % % % % %   %2. remove takeoff and landing profiles
+% % % % % %   %find rate of change of height wrt time
+% % % % % %   dZdt = abs(diff(Data.baro_alt_AC)./diff(Data.UTC_time));
+% % % % % %   %smooth slightly
+% % % % % %   dZdt = smoothn(dZdt,7);
+% % % % % %   
+% % % % % % 
+% % % % % %   %remove large-derivative regions near the start
+% % % % % %   iX = 1;  delta = 999;
+% % % % % %   while delta > 1;
+% % % % % %     if isnan(dZdt(iX)); iX = iX+1; continue; end
+% % % % % %     Data.UTC_time(iX) = NaN;
+% % % % % %     delta = dZdt(iX);
+% % % % % %     iX = iX+1;    
+% % % % % %   end
+% % % % % %   %and the end
+% % % % % %   iX = numel(Data.UTC_time)-1;  delta = 999;
+% % % % % %   while delta > 1;
+% % % % % %     if isnan(dZdt(iX)); iX = iX-1; continue; end
+% % % % % %     Data.UTC_time(iX) = NaN;
+% % % % % %     delta = dZdt(iX);
+% % % % % %     iX = iX-1;    
+% % % % % %   end  
+% % % % % %   
+% % % % % %   plot(Data.UTC_time,Data.baro_alt_AC)
+% % % % % %   drawnow
+
   
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   % store
@@ -145,7 +174,7 @@ for iFlight = 1:1:numel(Flights)
  
   
   clear Arr Dep Date Plane Instrument
- catch;end
+%  catch;end
   
 end
 textprogressbar(100)  ; textprogressbar('!')

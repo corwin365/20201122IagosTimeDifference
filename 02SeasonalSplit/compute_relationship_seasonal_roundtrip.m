@@ -14,7 +14,7 @@ clearvars
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %file containing airports and flight times
-Settings.DataFile = '../01InitialTesting/flightpairs.mat';
+Settings.DataFile = '../03CleanerFlights/flightpairs.mat';
 
 %indices to use
 Settings.Indices = {'QBO','ENSO','HadCRUT','NAM','TSI','NAO'};
