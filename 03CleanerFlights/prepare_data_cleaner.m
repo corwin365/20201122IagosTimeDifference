@@ -43,12 +43,12 @@ Flights = wildcardsearch(Settings.DataDir,'*.nc');
 Airports = [Settings.Eur,Settings.NA];
 
 %results
-Results.Dep     = NaN(numel(Flights),1); %index in airports array
-Results.Arr     = Results.Dep;           %index in airports array
-Results.t       = Results.Dep;           %flight time
-Results.Date    = Results.Dep;           %date of flight 
-Results.PlaneID = cell(numel(Flights));  %unique aircraft identifier
-Results.InstID  = Results.PlaneID;       %unique instrument identifier
+Results.Dep     = NaN(numel(Flights),1);   %index in airports array
+Results.Arr     = Results.Dep;             %index in airports array
+Results.t       = Results.Dep;             %flight time
+Results.Date    = Results.Dep;             %date of flight 
+Results.PlaneID = cell(numel(Flights),1);  %unique aircraft identifier
+Results.InstID  = Results.PlaneID;         %unique instrument identifier
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% process
@@ -87,6 +87,7 @@ for iFlight = 1:1:numel(Flights)
   %convert the ID string to an *aircraft* ID and an *instrument* ID
   ID = split(ID,',');
   Plane = ID{4}; Instrument = ID{1};
+  Plane(Plane == ' ') = []; Instrument(Instrument == ' ') = []; %remove excess spaces
   clear ID
   
   %convert date to Matlab time
