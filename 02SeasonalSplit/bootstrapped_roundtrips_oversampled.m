@@ -17,7 +17,7 @@ clearvars
 Settings.DataFile = '../01InitialTesting/flightpairs.mat';
 
 %indices to use
-Settings.Indices = {'QBO','ENSO','HadCRUT','NAM','TSI','NAO'};
+Settings.Indices = {'QBO','ENSO','HadCRUT','NAM','TSI','NAO','Time'};
 
 %minimum points for comparison
 Settings.MinPoints = 10;
@@ -38,7 +38,7 @@ Settings.NBands = 50;
 Settings.BandWidth = 1./4;
 
 %bootstrap properties
-Settings.BS.Straps  = 5000;
+Settings.BS.Straps  = 2000;
 Settings.BS.Samples = 2000;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -151,6 +151,8 @@ for iIndex=1:1:numel(Settings.Indices)
       TSI = load([LocalDataDir,'/Miscellany/tsi.mat']);
       a = interp1(TSI.Time,TSI.TSI,TimeScale);
       clear TSI
+    case 'Time'
+      a = TimeScale; 
   end
   Results(:,7+iIndex) = a;
   clear a
