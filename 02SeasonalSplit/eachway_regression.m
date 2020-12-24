@@ -31,7 +31,7 @@ Settings.Seasons.MAM = date2doy(datenum(2000, 3,1):datenum(2000, 6,1)-1);
 Settings.Seasons.JJA = date2doy(datenum(2000, 6,1):datenum(2000, 9,1)-1);
 Settings.Seasons.SON = date2doy(datenum(2000, 9,1):datenum(2000,12,1)-1);
 
-Settings.Seasons.All = 1:1:366;
+% Settings.Seasons.All = 1:1:366;
 
 
 % % % %bootstrap properties
@@ -118,8 +118,14 @@ clear Bad
 
 clearvars -except TimeScale Results Settings Data
 
+
+%retain the average time of a flight, in minutes
+AverageFlightTime = nanmean(Results(:,7)).*60;
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% load indices and interpolate to data
+%normalise indices to vary over a range of unity (except HadCRUT)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %load the indices, and interpolate to each data point
@@ -158,17 +164,22 @@ for iIndex=1:1:numel(Settings.Indices)
     case 'Time'
       a = TimeScale; 
   end
+  if ~strcmp(Settings.Indices{iIndex},'HadCRUT'); a = a./range(a); end%normalise
   Results(:,7+iIndex) = a;
   clear a
 end; clear iIndex TimeScale
 
-%retain the average time of a flight, in minutes
-AverageFlightTime = nanmean(Results(:,7)).*60;
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% do linear regression
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+% % % % % %randomly shuffle the data (TEST!)
+% % % % % Results(:,4) = Results(randperm(14094),4);
+
 
 Seasons = fieldnames(Settings.Seasons);
 
@@ -188,6 +199,7 @@ for iSeason=1:1:numel(Seasons)
     %do the regression
     mdl = fitlm(RegSeries,TimeTaken);
     Coefs = table2array(mdl.Coefficients);
+
     
 % % %     %print out results
 % % %     disp('===========================')
@@ -202,6 +214,11 @@ for iSeason=1:1:numel(Seasons)
     Reg.T(  iSeason,EW,:) = Coefs(2:end,3);
     Reg.P(  iSeason,EW,:) = Coefs(2:end,4);
     
+    %r-squared
+    Reg.R2(iSeason,EW) = mdl.Rsquared;
+    
+    %N
+    Reg.N(iSeason,EW) = size(RegSeries,1);
 
 % Indices = Results(:,8:end);
   end
@@ -235,18 +252,21 @@ for iSeason=1:1:numel(Seasons)
       %convert value from fraction of flight to minutes for mean flight
       Value = Value.*AverageFlightTime;
       
+      %indicate coefficient standard error
+      StErr = Value + [-1,1] .* AverageFlightTime .* Reg.SE(iSeason,EW,iCoef);
+      plot(StErr,[1,1].*iCoef,'k-','linewi',1); hold on
+      plot([1,1].*StErr(1),[-1,1].*0.5+iCoef,'k-')
+      plot([1,1].*StErr(2),[-1,1].*0.5+iCoef,'k-')
       
-      %get significane
+      %get significance
       Sig   = Reg.P(iSeason,EW,iCoef);
-      if Sig < 0.05; Alpha = 1; else Alpha = 0; end
+      if Sig < 0.05; Alpha = 0.9; else Alpha = 0; end
       
       
       h = plot(Value,iCoef,'marker',Symbols(iCoef), ...
                'color','k','markerfacecolor',Colours(iCoef), ...
-               'markersize',20);
+               'markersize',10);
       setMarkerColor(h,Colours(iCoef),Alpha);
-      hold on
-      
       
       
     end
@@ -256,22 +276,26 @@ for iSeason=1:1:numel(Seasons)
     set(gca,'ytick',[])
     ylabel(Seasons{iSeason},'fontsize',24);
     if EW == 2; set(gca,'yaxislocation','right'); end
-    plot([0,0],[0,size(Reg.Est,3)+1],'k-','linewi',3)
-    xlim([-1,1].*1.05.*max(Reg.Est(:)).*AverageFlightTime)
+    plot([0,0],[0,size(Reg.Est,3)+1],'k--','linewi',1)
+    xlim([-1,1].*1.05.*max(abs(Reg.Est(:))).*AverageFlightTime)
     ylim([0,size(Reg.Est,3)+1])
     
     if iSeason == 1 | iSeason == numel(Seasons);
       if EW == 1; title('Eastward'); else; title('Westward'); end
       if iSeason == 1; set(gca,'xaxislocation','top'); end
-      end
+    end
+    
+    text(-0.95*1.05*max(abs(Reg.Est(:))).*AverageFlightTime,size(Reg.Est,3),['N=',num2str(Reg.N(iSeason,EW))]);
     
   end
 end
 
 %% key - relative to last plot
 for iCoef=1:1:size(Reg.Est,3)
-  plot(-20+3.*iCoef,-3,'clipping','off','markersize',20, ...
+  
+  x = -60+12.*iCoef;
+  plot(x,-3,'clipping','off','markersize',20, ...
        'marker',Symbols(iCoef),'color','k','markerfacecolor',Colours(iCoef))
-  text(-20+3.*iCoef,-5,Settings.Indices{iCoef},'fontsize',12,'horizontalalignment','center')  
+  text(x,-4.6,Settings.Indices{iCoef},'fontsize',12,'horizontalalignment','center')  
   
 end

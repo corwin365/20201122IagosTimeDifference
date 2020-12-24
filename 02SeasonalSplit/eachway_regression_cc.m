@@ -231,6 +231,9 @@ for iSeason=1:1:numel(Seasons)
       setMarkerColor(h,Colours(iCoef),Alpha);
       hold on
       
+      %indicate coefficient standard error
+      StErr = Value + [-1,1] .* AverageFlightTime .* Reg.SE(iSeason,EW,iCoef);
+      plot(StErr,[1,1].*iCoef,'k-','linewi',3)
       
       
     end

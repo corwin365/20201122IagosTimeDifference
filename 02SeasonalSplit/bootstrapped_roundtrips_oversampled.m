@@ -17,10 +17,10 @@ clearvars
 Settings.DataFile = '../03CleanerFlights/flightpairs.mat';
 
 %indices to use
-Settings.Indices = {'QBO','ENSO','HadCRUT','NAM','TSI','NAO','Time'};
+Settings.Indices = {'QBO','ENSO','HadCRUT','NAM','TSI','NAO'};%,'Time'};
 
-%minimum points for comparison
-Settings.MinPoints = 10;
+%minimum flights between two airports (in a given direction) to be included in dataset
+Settings.MinPoints = 20;
 
 %outlier definition - flights this far off the median will be excluded
 Settings.Outlier = [0.9,1.1]; %proportion of median time
@@ -31,18 +31,18 @@ Settings.Seasons.MAM = date2doy(datenum(2000, 3,1):datenum(2000, 6,1)-1);
 Settings.Seasons.JJA = date2doy(datenum(2000, 6,1):datenum(2000, 9,1)-1);
 Settings.Seasons.SON = date2doy(datenum(2000, 9,1):datenum(2000,12,1)-1);
 
-Settings.Seasons.All = 1:1:366;
+% % Settings.Seasons.All = 1:1:366;
 
 %how many bands for each index?
 %these will overlap significantly - that's the plan
 Settings.NBands = 50;
 
 %and how wide should the bands be relative to the data range?
-Settings.BandWidth = 1./4;
+Settings.BandWidth = 1./5;
 
 %bootstrap properties
 Settings.BS.Straps  = 2000;
-Settings.BS.Samples = 2000;
+Settings.BS.Samples = 1000;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% load data
@@ -303,7 +303,7 @@ for iSeason=1:1:numel(Seasons)
     
     if iSeason == 1; title(Settings.Indices{iIndex}); end
     if iIndex  == 1; ylabel(Seasons{iSeason}); end
-    
+    drawnow
   end; clear iSeason
   
 end; clear iIndex
