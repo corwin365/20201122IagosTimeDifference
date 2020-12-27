@@ -28,6 +28,7 @@ DoY = floor(date2doy(Data.Results.Date));
 
 Airports = unique(cat(1,Data.Results.Dep,Data.Results.Arr)); 
 
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% for each pair of airports in each "season", identify all flights and store them as a group
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -118,5 +119,9 @@ NFlights = sum(~isnan(Flights),4);
 
 clear Routes UsedAirports
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% save!
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 save('data/routes.mat')

@@ -80,7 +80,7 @@ for iSeason=1:1:numel(Seasons)
       else                  Value = num2str(N);
       end
       
-      text(iX-0.5,iY-0.5,Value,'horizontalalignment','center','color',Colour,'fontweight','bold')
+      text(iX-0.5,iY-0.5,Value,'horizontalalignment','center','color',Colour,'fontweight','bold','fontsize',11)
       
     end
   end
