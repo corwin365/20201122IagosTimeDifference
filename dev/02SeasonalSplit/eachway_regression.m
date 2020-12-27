@@ -3,7 +3,7 @@ clearvars
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %analyse IAGOS data for effect of ENSO, NAO, QBO and HadCRUT on
-%trans-atlantic flight times, winter only
+%trans-atlantic flight times
 %
 %Corwin Wright, c.wright@bath.ac.uk, 2020/11/23
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -17,7 +17,7 @@ clearvars
 Settings.DataFile = '../03CleanerFlights/flightpairs.mat';
 
 %indices to use
-Settings.Indices = {'QBO','ENSO','HadCRUT','NAM','TSI','NAO','Time'};
+Settings.Indices = {'QBO','ENSO','HadCRUT','NAM','TSI','NAO'};%,'Time'};
 
 %minimum points for comparison
 Settings.MinPoints = 20;
@@ -194,8 +194,8 @@ for iSeason=1:1:numel(Seasons)
     TimeTaken = Results(Indices,4);
     
     %and the regression time series
-    RegSeries = Results(Indices,8:end-1); %the -1 excludes "time", which is very similar to HadCRUT
-  
+    RegSeries = Results(Indices,8:end); 
+    
     %do the regression
     mdl = fitlm(RegSeries,TimeTaken);
     Coefs = table2array(mdl.Coefficients);
@@ -234,8 +234,8 @@ clear Results iSeason EW
 clf
 set(gcf,'color','w')
 
-Symbols = 'sd<o^>';
-Colours = 'rgbycm';
+Symbols = 'sd<o^>v';
+Colours = 'rgbycmk';
 
 for iSeason=1:1:numel(Seasons)
   for EW = 1:2
