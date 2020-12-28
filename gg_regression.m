@@ -57,9 +57,65 @@ clear iDep iArr iSeason Flights NPorts E
 MedianFlightTime = nanmedian(FlightData.Results.t(:))./60; %MINUTES
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% extract valid points, and regress for each season
+%% generate lag analysis data
+% if lagging is switched off in the master settings
+%the same code is used but with a 'lag' of zero
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+
+%prepare lagging matrices
+%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%the number of indices can vary, so we need to condense this into
+%an array which can be done in a single loop
+%do this by creating an array where:
+  %each column is an index
+  %each row is a different set of lags
+
+if Settings.Reg.Lag == 1;
+  
+  %generate the list of lag-steps to be used for each index
+  LagScale =Settings.Reg.Steps;
+  NLags    = numel(LagScale);
+  NIndices = numel(Settings.Indices);
+  LagMatrix = NaN(NLags.^NIndices,NIndices);
+  disp(['Testing ',num2str(NLags.^NIndices),' combinations, this may take some time'])
+
+  %produce a lag matrix. 
+  %let's take advantage of base-conversion algebra to make all the 
+  %possible numeric combinations. This is *very* cheaty, and took me
+  %hours to think up. It's fast though and only a few lines
+  if NIndices ~= 1;
+    Base10      = (0:1:NLags.^NIndices-1)';
+    BaseIndices = cellstr(dec2base(Base10,NLags,NIndices));
+    textprogressbar('Generating combinations ')
+    for iRow=1:1:size(LagMatrix,1)
+      String = BaseIndices{iRow};
+      for iCol=1:1:NIndices;
+        LagMatrix(iRow,iCol) = base2dec(String(iCol),NLags);
+      end
+      if mod(iRow,100);textprogressbar(iRow./size(LagMatrix,1).*100); end
+    end
+    LagMatrix= LagScale(LagMatrix+1);
+    clear LagScale NLags NIndices Base10 BaseIndices iRow iCol String
+    textprogressbar(100); textprogressbar('!')
+  else
+    LagMatrix(:) = LagScale;
+  end
+else
+  LagMatrix = zeros(1,numel(Settings.Indices));
+end
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% regress for each season
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+textprogressbar('Regressing data against indices ')
 for iSeason=1:1:numel(Seasons)
 
   for iEast=1:2; %1 eastward, 2 westward
@@ -73,37 +129,73 @@ for iSeason=1:1:numel(Seasons)
     Flights = Flights(Dir == iEast);    
     
     %get their relative times
-    tRel = FlightData.Results.tRel(Flights);
+    tRel = FlightData.Results.tRel(Flights);   
     
-    %get the corresponding climate indices
-    Beta = NaN(numel(Settings.Indices),numel(tRel));
-    for iIndex=1:1:numel(Settings.Indices)
-      Index = Indices.Indices.(Settings.Indices{iIndex});
-      Beta(iIndex,:) = Index(Flights);
-    end
-    clear iIndex Index
+
     
-    %the Beta matrix is the regression indices
-    %the tRel vector is the resulting times
-    %fit a linear rregression model
-    mdl = fitlm(Beta',tRel);
+    %loop over possible lags, optimising for the largest R2
+    R2 = 0;
     
-    %convert the coefficients to a matrix
-    Coefs = table2array(mdl.Coefficients);
+    for iLag=1:1:size(LagMatrix,1)
+      
+      %get the necessary climate indices for this lag
+      Beta = NaN(numel(Settings.Indices),numel(tRel));
+      for iIndex=1:1:numel(Settings.Indices)
+        if LagMatrix(iLag,iIndex) == 0;
+          Index = Indices.Indices.(Settings.Indices{iIndex});
+          Beta(iIndex,:) = Index(Flights);
+          Lags(iIndex) = 0;
+        else
+          Index = Indices.Indices.Lagged.(Settings.Indices{iIndex});
+          idx = closest(Indices.Indices.Lagged.LaggedScale,LagMatrix(iLag,iIndex));
+          Beta(iIndex,:) = Index(idx,Flights);
+          Lags(iIndex) = Indices.Indices.Lagged.LaggedScale(idx); %just in case the arrays don't match, this will store the actual value used
+        end
+      end
+      Beta = Beta';
+      clear iIndex Index idx
+      
+      %the Beta matrix is the regression indices
+      %the tRel vector is the resulting times
     
     
-    %and store them
-    Reg.Est(iEast,iSeason,:) = Coefs(2:end,1);
-    Reg.SE( iEast,iSeason,:) = Coefs(2:end,2);
-    Reg.T(  iEast,iSeason,:) = Coefs(2:end,3);
-    Reg.P(  iEast,iSeason,:) = Coefs(2:end,4);
+      %fit a linear rregression model
+      mdl = fitlm(Beta,tRel);
+      
+      %if R2 is better than any previous attempt, store
+      if mdl.Rsquared.Adjusted > R2;
+        
+        %convert the coefficients to a matrix
+        Coefs = table2array(mdl.Coefficients);
+        
+        
+        %and store them
+        Reg.Est(iEast,iSeason,:) = Coefs(2:end,1);
+        Reg.SE( iEast,iSeason,:) = Coefs(2:end,2);
+        Reg.T(  iEast,iSeason,:) = Coefs(2:end,3);
+        Reg.P(  iEast,iSeason,:) = Coefs(2:end,4);
+        
+        %also store the number of flights used
+        Reg.N(  iEast,iSeason,:) = mdl.NumObservations;
+        
+        %and the R2
+        Reg.R2( iEast,iSeason,:) = mdl.Rsquared.Adjusted;
+        R2 = mdl.Rsquared.Adjusted;
+        
+        %and the lag
+        Reg.Lag(iEast,iSeason,:) = Lags;
+     
+      end
+      
+    end; clear iLag BetaLag iIndex Lags R2
     
-    %also store the number of flights used
-    Reg.N(  iEast,iSeason,:) = mdl.NumObservations;
     
   end
+  textprogressbar(iSeason./numel(Seasons).*100)
 end
-clear iSeason Flights tRel mdl Coefs Beta RouteData Indices FlightData iEast Dir
+textprogressbar('!')
+clear iSeason Flights tRel mdl Coefs Beta RouteData Indices FlightData iEast Dir LagMatrix
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% plot results
@@ -151,6 +243,14 @@ for iSeason=1:1:numel(Seasons)
       hold on
       setMarkerColor(h,Colours(iIndex),Alpha);      
       
+      
+      if Settings.Reg.Lag == 1
+        Shift = Reg.Lag(iEast,iSeason,iIndex);
+        if Shift > 0; Shift = ['+',num2str(Shift)]; else Shift = num2str(Shift); end
+        text(Value,iIndex+0.5,Shift, ...
+          'horizontalalignment','center','fontsize',10)
+      end
+      
     end
     
     
@@ -164,7 +264,7 @@ for iSeason=1:1:numel(Seasons)
   
   set(gca,'ytick',[])
   ylabel(Seasons{iSeason},'fontsize',24);
-  plot([0,0],[0,size(Reg.Est,3)+2],'k--','linewi',1)
+  plot([0,0],[0,size(Reg.Est,3)+2],'-','linewi',1,'color',[1,1,1].*0.5)
   xlim([-30,+40])
   ylim([0,size(Reg.Est,3)+1])
   text(-28,size(Reg.Est,3),['N=',num2str(Reg.N(iEast,iSeason,1))]);
@@ -187,5 +287,3 @@ for iCoef=1:1:size(Reg.Est,3)
   text(x,-4.6,Settings.Indices{iCoef},'fontsize',12,'horizontalalignment','center')  
   
 end
-
-

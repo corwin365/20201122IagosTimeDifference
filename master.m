@@ -24,16 +24,18 @@ clear all
 
 %this is a list of programme components in order - 1 to run, 0 to skip
 %this is just to save runtime - if you want a full reset, set all to 1.
-%if in doubt, run them all, as there may be some unexpected dependencies
+%IF IN DOUBT, RUN THEM ALL, as there may be some unexpected dependencies
+%two-letter prefixes refer to the actual functions called
 
-MasterSettings.Run = [0, ...  %generate airport geolocation dataset
-                      0, ...  %find and store all flights between regions
-                      1, ...  %rearrange data into routes
-                      1, ...  %plot airport metadata
-                      1, ...  %plot flight paths used
-                      1, ...  %prepare climate indices
-                      1, ...  %do and plot multilinear regression
-                      1];     %do and plot relative histograms, one-way
+MasterSettings.Run = [0, ...  %aa: generate airport geolocation dataset
+                      0, ...  %bb: find and store all flights between regions
+                      0, ...  %cc: rearrange data into routes
+                      0, ...  %dd: plot airport metadata
+                      0, ...  %ee: plot flight paths used
+                      1, ...  %ff: prepare climate indices
+                      1, ...  %gg: do and plot multilinear regression
+                      0, ...  %hh: do and plot relative histograms, one-way
+                      0];     %ii: do and plot relative histograms, round-trip
 
                     
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                    
@@ -113,7 +115,7 @@ MasterSettings.DataDir = [LocalDataDir,'/IAGOS/Timeseries/'];
 %data will be plotted and multilinear regressed about these
 %all will be normalised to a range of 1
 MasterSettings.Indices = {'QBO','ENSO','HadCRUT','NAM','TSI','NAO','Time'};
-% MasterSettings.Indices = {'QBO','ENSO','HadCRUT','NAM','TSI','Time'};
+% % MasterSettings.Indices = {'QBO','ENSO','HadCRUT','NAM','TSI'};
 % MasterSettings.Indices = {'HadCRUT'};
 
 %what fraction of the data should be used for index-comparison histograms?
@@ -124,6 +126,12 @@ MasterSettings.IndexFraction = 0.2; %1 = all data
 MasterSettings.IndexHistBins   = 40;
 MasterSettings.IndexHistSmooth = 5; %must be odd
 
+%do we want to lag the indices for the regression, and if so over how long
+%a window and with what step size? 
+%this goes combinatorically with the list of indices above - so be careful,
+%the runtime can get very large very fast if this is used
+MasterSettings.Reg.Lag   = 0; %1 for yes, 0 for no
+MasterSettings.Reg.Steps = [-60,-30,-10,-5,-2,0]; %values to try
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -314,6 +322,8 @@ if MasterSettings.Run(6) == 1;
   Settings = struct();
   Settings.Indices   = MasterSettings.Indices;
   Settings.TimeScale = MasterSettings.TimeScale;
+  Settings.Reg = MasterSettings.Reg;
+  
   
   %call routine
   ff_generateindices(Settings)
@@ -346,6 +356,7 @@ if MasterSettings.Run(7) == 1;
   Settings.Seasons = MasterSettings.Seasons;
   Settings.NA      = MasterSettings.Airports.NA;
   Settings.Eur     = MasterSettings.Airports.Eur; 
+  Settings.Reg     = MasterSettings.Reg;
   
   %call routine
   gg_regression(Settings)
@@ -394,3 +405,36 @@ if MasterSettings.Run(8) == 1;
   
 end
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% 9. difference histograms, round-trip
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+if MasterSettings.Run(9) == 1;
+
+  %notification
+  disp('----------> Producing round-trip distance histograms ')
+  
+  %set needed variables
+  Settings = struct();
+  Settings.Indices    = MasterSettings.Indices;
+  Settings.Seasons    = MasterSettings.Seasons;
+  Settings.NA         = MasterSettings.Airports.NA;
+  Settings.Eur        = MasterSettings.Airports.Eur; 
+  Settings.Frac       = MasterSettings.IndexFraction;
+  Settings.HistBins   = linspace(MasterSettings.RelativeTime(1), ...
+                                 MasterSettings.RelativeTime(2), ...
+                                 MasterSettings.IndexHistBins+1);
+  Settings.HistSmooth =MasterSettings.IndexHistSmooth;
+  
+  %call routine
+  ii_histograms2(Settings)
+  
+  %tidy up
+  clearvars -except MasterSettings
+  
+  else
+  
+  %notification
+  disp('x-x-x-x-x-> Round-trip distance histograms SKIPPED')
+  
+end

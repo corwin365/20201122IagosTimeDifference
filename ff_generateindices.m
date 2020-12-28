@@ -69,13 +69,81 @@ for iIndex=1:1:numel(Settings.Indices)
   
   %normalise
   a = a./range(a);
-%   if ~strcmp(Settings.Indices{iIndex},'HadCRUT'); a = a./range(a); end%normalise
+  a = a-min(a);
   
   %store
   Indices.(Settings.Indices{iIndex}) = a;
   
   clear a
-end; clear iIndex TimeScale
+end; clear iIndex
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% we may want to regress data with lags. 
+%if so, pregenerate the lagged data here
+%this piece of code is very inefficient with file loading,
+%but the files are small and it saves a full rewrite
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+if Settings.Reg.Lag == 1;
+  
+  Indices.Lagged = struct();
+  LagScale = Settings.Reg.Steps;
+  Indices.Lagged.LaggedScale = LagScale;
+  
+  for iIndex=1:1:numel(Settings.Indices)   
+    Store = NaN(numel(LagScale),numel(TimeScale));
+    
+    for iLag=1:1:numel(LagScale)
+      
+      switch Settings.Indices{iIndex}
+        case 'QBO'
+          QBO = load('indices/QBO.mat');
+          QBO.Time = floor(QBO.Time); %shift from noon to midnight to make the logic easier - on a 91-day smoothing this is very minor...
+          a = interp1(QBO.Time+LagScale(iLag),QBO.QBO,TimeScale);
+          clear QBO
+        case 'ENSO'
+          ENSO = load('indices/nino34.mat');
+          a = interp1(ENSO.Time+LagScale(iLag),ENSO.Nino34,TimeScale);
+          clear ENSO
+        case 'HadCRUT'
+          HadCRUT = rCDF('indices/HadCRUT.4.6.0.0.median.nc');
+          HadCRUT.MatlabTime = datenum(1850,1,HadCRUT.time);
+          HadCRUT.NH = squeeze(nanmean(HadCRUT.temperature_anomaly(:,HadCRUT.latitude > 0,:),[1,2]));
+          a = interp1(HadCRUT.MatlabTime+LagScale(iLag),HadCRUT.NH,TimeScale);
+          clear HadCRUT
+        case 'NAM'
+          NAM = load('indices/daily_nam.mat');
+          a = interp1(NAM.Time+LagScale(iLag),NAM.NAM,TimeScale);
+          clear NAM
+        case 'NAO'
+          NAO = load('indices/nao.mat');
+          a = interp1(NAO.Date+LagScale(iLag),NAO.NAO,TimeScale);
+          clear NAO
+        case 'TSI'
+          TSI = load('indices/tsi.mat');
+          a = interp1(TSI.Time+LagScale(iLag),TSI.TSI,TimeScale);
+          clear TSI
+        case 'Time'
+          a = TimeScale+LagScale(iLag);
+        otherwise
+          disp(['Index ',Settings.Indices{iIndex},' not specified; stopping'])
+          stop
+      end
+      
+      %normalise
+      a = a./range(a);
+      a = a-min(a);
+      
+      %store
+      Store(iLag,:) = a;
+      
+    end
+
+    Indices.Lagged.(Settings.Indices{iIndex}) = Store;
+    clear Store
+  end; clear iIndex
+end
 
 
 
