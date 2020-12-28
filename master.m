@@ -32,10 +32,10 @@ MasterSettings.Run = [0, ...  %aa: generate airport geolocation dataset
                       0, ...  %cc: rearrange data into routes
                       0, ...  %dd: plot airport metadata
                       0, ...  %ee: plot flight paths used
-                      1, ...  %ff: prepare climate indices
-                      1, ...  %gg: do and plot multilinear regression
+                      0, ...  %ff: prepare climate indices
+                      0, ...  %gg: do and plot multilinear regression
                       0, ...  %hh: do and plot relative histograms, one-way
-                      0];     %ii: do and plot relative histograms, round-trip
+                      1];     %ii: do and plot relative histograms, round-trip
 
                     
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                    
@@ -132,6 +132,11 @@ MasterSettings.IndexHistSmooth = 5; %must be odd
 %the runtime can get very large very fast if this is used
 MasterSettings.Reg.Lag   = 0; %1 for yes, 0 for no
 MasterSettings.Reg.Steps = [-60,-30,-10,-5,-2,0]; %values to try
+
+%what rage should we compute ROUND TRIP histograms over
+%relative to a single trip
+MasterSettings.RTRelativeTime = [1.9,2.1]; 
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -390,7 +395,7 @@ if MasterSettings.Run(8) == 1;
   Settings.HistBins   = linspace(MasterSettings.RelativeTime(1), ...
                                  MasterSettings.RelativeTime(2), ...
                                  MasterSettings.IndexHistBins+1);
-  Settings.HistSmooth =MasterSettings.IndexHistSmooth;
+  Settings.HistSmooth = MasterSettings.IndexHistSmooth;
   
   %call routine
   hh_histograms(Settings)
@@ -420,11 +425,11 @@ if MasterSettings.Run(9) == 1;
   Settings.Seasons    = MasterSettings.Seasons;
   Settings.NA         = MasterSettings.Airports.NA;
   Settings.Eur        = MasterSettings.Airports.Eur; 
-  Settings.Frac       = MasterSettings.IndexFraction;
-  Settings.HistBins   = linspace(MasterSettings.RelativeTime(1), ...
-                                 MasterSettings.RelativeTime(2), ...
+  Settings.Frac       = MasterSettings.IndexFraction; 
+  Settings.HistBins   = linspace(MasterSettings.RTRelativeTime(1), ...
+                                 MasterSettings.RTRelativeTime(2), ...
                                  MasterSettings.IndexHistBins+1);
-  Settings.HistSmooth =MasterSettings.IndexHistSmooth;
+  Settings.HistSmooth = MasterSettings.IndexHistSmooth;
   
   %call routine
   ii_histograms2(Settings)
