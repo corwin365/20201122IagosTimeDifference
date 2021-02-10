@@ -29,16 +29,13 @@ clear all
 
 MasterSettings.Run = [0, ...  %aa: generate airport geolocation dataset
                       0, ...  %bb: find and store all flights between regions
-                      0, ...  %cc: rearrange data into routes
-                      0, ...  %dd: plot airport metadata
-                      0, ...  %ee: plot flight paths used
-                      0, ...  %ff: prepare climate indices
+                      1, ...  %cc: rearrange data into routes
+                      1, ...  %dd: plot airport metadata
+                      1, ...  %ee: plot flight paths used
+                      1, ...  %ff: prepare climate indices
                       1, ...  %gg: do and plot multilinear regression
-                      0, ...  %hh: do and plot relative histograms, one-way
-                      0, ...  %hi: do and plot relative box plots, one-way                      
-                      0, ...  %ii: do and plot relative histograms, round-trip                  
-                      0, ...  %ij: do and plot relative boxplots, round-trip
-                      0];     %jj: time series of planes and indices
+                      1, ...  %hh: do and plot relative histograms, one-way
+                      1];     %ii: do and plot relative histograms, round-trip
 
                     
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                    
@@ -46,20 +43,10 @@ MasterSettings.Run = [0, ...  %aa: generate airport geolocation dataset
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %North America
-MasterSettings.Airports.NA = {'ATL','BOS','BWI','CDW','CLE','CLT','CVG','DRM','DTW','EWR', ...
-                              'FOK','IAD','JFK','LUK','MKE','MRB','ORD','PHL','PNE','YMX', ...
-                              'YQB','YUL','YYR','YYZ','YZD'};
+MasterSettings.Airports.NA = {'ATL'};
 %Europe
-MasterSettings.Airports.Eur = {'AGA','AGP','AHO','AMM','AMS','ATH','AYT','BCN','BEY','BOD', ...
-                               'BRE','BRU','BTS','BUD','CAI','CDG','CGN','CIA','CRL','DBV', ...
-                               'DLM','DME','DRS','DUS','ESB','FCO','FKB','FRA','GHF','GRO', ...
-                               'HAJ','HAM','HEL','HER','HSK','IST','LCA','LEI','LEJ','LGW', ...
-                               'LHR','LIS','LNZ','LYS','MAD','MAN','MLA','MRS','MUC','MXP', ...
-                               'NCE','NUE','ORY','OST','OTP','PMI','PRG','PSA','PUY','RHO', ...
-                               'RIX','RLG','SDV','SKG','SNN','SPM','STN','SXB','SZG','SZW', ...
-                               'TLS','TLV','TOJ','TXL','UTC','VIE','ZNV','ZQL','ZRH'};                         
+MasterSettings.Airports.Eur = {'FRA'};
 
-                             
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                             
 %data cleansing and prep
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%           
@@ -82,7 +69,7 @@ MasterSettings.RelativeTime = [0.85,1.15];
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %time spacing of downsampled full routes, used to generate maps
-MasterSettings.ResampleTime = 1; %minutes
+MasterSettings.ResampleTime = 2; %minutes
 
 %mesh for geographic maps
 MasterSettings.Maps.Lon = -100:1:25;
@@ -117,8 +104,8 @@ MasterSettings.DataDir = [LocalDataDir,'/IAGOS/Timeseries/'];
 %what climate indices to use?
 %data will be plotted and multilinear regressed about these
 %all will be normalised to a range of 1
-MasterSettings.Indices = {'ENSO','QBO','HadCRUT','NAM','TSI','Time'};
-% % MasterSettings.Indices = {'QBO','ENSO','HadCRUT','NAM','TSI','NAO'};
+MasterSettings.Indices = {'QBO','ENSO','HadCRUT','NAM','TSI','NAO','Time'};
+% % MasterSettings.Indices = {'QBO','ENSO','HadCRUT','NAM','TSI'};
 % MasterSettings.Indices = {'HadCRUT'};
 
 %what fraction of the data should be used for index-comparison histograms?
@@ -127,7 +114,7 @@ MasterSettings.IndexFraction = 0.2; %1 = all data
 %how many histogram bins to use, spread across the range of valid relative
 %times, and how many bins to smooth output by?
 MasterSettings.IndexHistBins   = 40;
-MasterSettings.IndexHistSmooth = 3; %must be odd
+MasterSettings.IndexHistSmooth = 5; %must be odd
 
 %do we want to lag the indices for the regression, and if so over how long
 %a window and with what step size? 
@@ -214,6 +201,7 @@ if MasterSettings.Run(2) == 1;
   disp('x-x-x-x-x-> Flight metadata computation SKIPPED')
   
 end
+
 
 
 
@@ -413,46 +401,10 @@ if MasterSettings.Run(8) == 1;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% 9. difference box plots, one-way
+%% 9. difference histograms, round-trip
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if MasterSettings.Run(9) == 1;
-
-  %notification
-  disp('----------> Producing one-way distance  box plots ')
-  
-  %set needed variables
-  Settings = struct();
-  Settings.Indices    = MasterSettings.Indices;
-  Settings.Seasons    = MasterSettings.Seasons;
-  Settings.NA         = MasterSettings.Airports.NA;
-  Settings.Eur        = MasterSettings.Airports.Eur; 
-  Settings.Frac       = MasterSettings.IndexFraction;
-  Settings.HistBins   = linspace(MasterSettings.RelativeTime(1), ...
-                                 MasterSettings.RelativeTime(2), ...
-                                 MasterSettings.IndexHistBins+1);
-  Settings.HistSmooth = MasterSettings.IndexHistSmooth;
-  
-  %call routine
-  hi_boxplots(Settings)
-  
-  %tidy up
-  clearvars -except MasterSettings
-  
-  else
-  
-  %notification
-  disp('x-x-x-x-x-> One-way distance box plots SKIPPED')
-  
-end
-
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% 10. difference histograms, round-trip
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-if MasterSettings.Run(10) == 1;
 
   %notification
   disp('----------> Producing round-trip distance histograms ')
@@ -479,66 +431,5 @@ if MasterSettings.Run(10) == 1;
   
   %notification
   disp('x-x-x-x-x-> Round-trip distance histograms SKIPPED')
-  
-end
-
-
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% 11. difference histograms, round-trip
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-if MasterSettings.Run(11) == 1;
-
-  %notification
-  disp('----------> Producing round-trip distance boxplots ')
-  
-  %set needed variables
-  Settings = struct();
-  Settings.Indices    = MasterSettings.Indices;
-  Settings.Seasons    = MasterSettings.Seasons;
-  Settings.NA         = MasterSettings.Airports.NA;
-  Settings.Eur        = MasterSettings.Airports.Eur; 
-  Settings.Frac       = MasterSettings.IndexFraction; 
-  Settings.HistBins   = linspace(MasterSettings.RTRelativeTime(1), ...
-                                 MasterSettings.RTRelativeTime(2), ...
-                                 MasterSettings.IndexHistBins+1);
-  Settings.HistSmooth = MasterSettings.IndexHistSmooth;
-  
-  %call routine
-  ij_boxplots2(Settings)
-  
-  %tidy up
-  clearvars -except MasterSettings
-  
-  else
-  
-  %notification
-  disp('x-x-x-x-x-> Round-trip distance boxplots SKIPPED')
-  
-end
-
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% 12. metadata about individual aircraft
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-if MasterSettings.Run(12) == 1;
-
-  %notification
-  disp('----------> Producing time series of planes and indices ')
-
-  %call routine
-  jj_planes_and_indices()
-  
-  %tidy up
-  clearvars -except MasterSettings
-  
-  else
-  
-  %notification
-  disp('x-x-x-x-x-> Time series of planes and indices plots SKIPPED')
   
 end

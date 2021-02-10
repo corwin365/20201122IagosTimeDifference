@@ -29,8 +29,8 @@ Airports.Lats = Airports.Lons;
 %metainfo about flights
 Results.Dep     = cell(numel(Flights),1);  %flight start
 Results.Arr     = cell(numel(Flights),1);  %flight end
-Results.t       = NaN(numel(Flights),1);   %flight time
-Results.Date    = NaN(numel(Flights),1);   %date of flight 
+Results.t       = NaN( numel(Flights),1);   %flight time
+Results.Date    = NaN( numel(Flights),1);   %date of flight 
 Results.PlaneID = cell(numel(Flights),1);  %unique aircraft identifier
 Results.InstID  = cell(numel(Flights),1);  %unique instrument identifier
 

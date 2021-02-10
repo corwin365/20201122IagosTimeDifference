@@ -13,10 +13,10 @@ function [] = ee_routeplot(Settings)
 %% create new figure
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-figure
+% figure
 clf
-set(gcf,'color','w')
-subplot = @(m,n,p) subtightplot (m, n, p, 0.08, 0.05, 0.05);
+set(gcf,'color','w','position',[101.4 347.8 1422.8 442])
+subplot = @(m,n,p) subtightplot (m, n, p, 0.02, 0.02, [0.02 0.06]);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% load route and flight data
@@ -83,6 +83,15 @@ Maps(Maps == 0) = NaN;
 Maps = log10(Maps);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% load surface imagery
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+[~,Map,~,Coasts] = topo_etc([min(xi(:)) max(xi(:))], ...
+                               [min(yi(:)) max(yi(:))], ...
+                               0,0,0,1);
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% and plot the two maps
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clf
@@ -90,28 +99,52 @@ k = 0;
 
 for iDir=1:2
 
-  for iSeason=1:1:numel(Seasons)
+  for iSeason=1:1:numel(Seasons)-1%omit all-seasons - redundant
     
     k = k+1;
-    subplot(2,numel(Seasons),k)
+    subplot(2,4,k)
     
-    m_proj('robinson','lat',[min(yi(:)) max(yi(:))],'lon',[min(xi(:)) max(xi(:))]);
-    m_coast('patch',[1,1,1].*0.9,'edgecolor','none');
+    %produce map
+    m_proj('albers','lat',[30 75],'lon',[-92 20]);
+    m_image(Map.LonScale,Map.LatScale,Map.Map);
     hold on
     
-    if iDir == 1; title([Seasons{iSeason},' Eward']);
-    else;         title([Seasons{iSeason},' Wward']);
+    %add data     
+    m_pcolor(xi,yi,squeeze(Maps(iSeason,:,:,iDir)));
+    m_grid('fontsize',12);
+    colormap(cbrewer('seq','YlOrBr','16'));
+    
+    %overlay coastlines
+    for iCoast=1:1:numel(Coasts)
+      m_plot(Coasts(iCoast).Lon,Coasts(iCoast).Lat,'-','linewi',0.5,'color',[1,1,1].*0)
+      hold on
     end
     
+    %set colour range
+    caxis([0 3.5])
     
-    m_pcolor(xi,yi,squeeze(Maps(iSeason,:,:,iDir)))
-    m_grid
-    
-    redyellowblue16
-    cb = colorbar('southoutside');
-    cb.Label.String = 'log_{10} (Number of Flights Through Gridbox)';
+
     drawnow
+
+    
+    % % %     m_coast('patch',[1,1,1].*0.9,'edgecolor','none');
+% % %     hold on
+% % %     
+% % %     if iDir == 1; title([Seasons{iSeason},' Eward']);
+% % %     else;         title([Seasons{iSeason},' Wward']);
+% % %     end
+% % %     
+% % %    
+    
+    
   end
   
 end
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% colourbar
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+cb = colorbar('eastoutside','position',[0.95 0.26 0.01 0.40]);
+cb.Label.String = 'log_{10} (Flight-Minutes)';

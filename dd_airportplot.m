@@ -10,12 +10,21 @@ function [] = dd_routeplot(Settings)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% load surface imagery
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+[~,Map,~,Coasts] = topo_etc([-180 179], ...
+                            [-89 90], ...
+                             0,0,0,1);
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% create new figure for each season
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %get list of seasons
 Seasons = fieldnames(Settings.Seasons);
 
-for iSeason=1:1:numel(Seasons)
+for iSeason=1:1:numel(Seasons) %temporarily only plot 'all' map
   
   
   figure
@@ -100,16 +109,17 @@ for iSeason=1:1:numel(Seasons)
     
     if iSide == 1;
       subplot(2,2,1)
-      m_proj('robinson','lat',[30,70],'lon',[-20,25]);
+      m_proj('robinson','lat',[37,55],'lon',[-10,20]);
       %     set(gca,'yaxislocation','right')
       title('Europe')
     else
       subplot(2,2,3)
-      m_proj('robinson','lat',[25,65],'lon',[-100,-55]);
+      m_proj('robinson','lat',[32,48],'lon',[-95,-65]);
       title('North America')
     end
     
-    m_coast('patch',[1,1,1].*0.9,'edgecolor','none');
+    m_image(Map.LonScale,Map.LatScale,Map.Map);
+%     m_coast('patch',[1,1,1].*0.9,'edgecolor','none');
     hold on
     
     for iAirport=1:1:NPorts
@@ -130,11 +140,12 @@ for iSeason=1:1:numel(Seasons)
       m_text(FlightData.Airports.Lons(ID), ...
         FlightData.Airports.Lats(ID), ...
         Port, ...
-        'color',Colour,'horizontalalignment','center','fontsize',8,'fontweight','bold')
+        'color',Colour,'horizontalalignment','center', ...
+        'fontsize',10,'fontweight','bold')
       
       
     end
-    m_grid('xtick',[-185:10:180],'ytick',[-90:10:90])
+    m_grid('xtick',[-185:5:180],'ytick',[-90:5:90])
     
   end
   drawnow

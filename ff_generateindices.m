@@ -58,6 +58,8 @@ for iIndex=1:1:numel(Settings.Indices)
       clear NAO      
     case 'TSI'
       TSI = load('indices/tsi.mat');
+      TSI.TSI(TSI.TSI < 1358) = NaN; %very noisy - remove an extreme outlier
+      TSI.TSI = smoothn(TSI.TSI,[15,1]);%very noisy - smooth to make it fair
       a = interp1(TSI.Time,TSI.TSI,TimeScale);
       clear TSI
     case 'Time'
@@ -67,9 +69,12 @@ for iIndex=1:1:numel(Settings.Indices)
       stop
   end
   
+ 
   %normalise
   a = a./range(a);
   a = a-min(a);
+  a= (a.*2)-1;
+
   
   %store
   Indices.(Settings.Indices{iIndex}) = a;
@@ -122,7 +127,9 @@ if Settings.Reg.Lag == 1;
           clear NAO
         case 'TSI'
           TSI = load('indices/tsi.mat');
-          a = interp1(TSI.Time+LagScale(iLag),TSI.TSI,TimeScale);
+          TSI.TSI(TSI.TSI < 1358) = NaN; %very noisy - remove an extreme outlier
+          TSI.TSI = smoothn(TSI.TSI,[15,1]);%very noisy - smooth to make it fair
+          a = interp1(TSI.Time,TSI.TSI,TimeScale);
           clear TSI
         case 'Time'
           a = TimeScale+LagScale(iLag);
@@ -134,7 +141,8 @@ if Settings.Reg.Lag == 1;
       %normalise
       a = a./range(a);
       a = a-min(a);
-      
+      a= (a.*2)-1;
+  
       %store
       Store(iLag,:) = a;
       
