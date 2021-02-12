@@ -211,7 +211,7 @@ for iSeason=1:1:numel(Seasons);
   hold on
   
   %create axes
-%   axis([ -50 50 0.5 numel(Settings.Indices)+0.5])
+  axis([ -50 50 0.5 numel(Settings.Indices)+0.5])
   set(gca,'tickdir','out','ticklen',[1,1].*0.02)
   
   for iIndex = 1:1:numel(Settings.Indices)
@@ -220,8 +220,8 @@ for iSeason=1:1:numel(Seasons);
       for iPass=1:2 %first pass fill shades, second pass plot lines
         
         switch iSegment;
-          case 2; Colour = [255,178,102]./255;
-          case 1; Colour = [102,178,255]./255;
+          case 2; Colour = [255,128,000]./255;
+          case 1; Colour = [000,255,255]./255;
         end
         
         %get data
@@ -238,6 +238,22 @@ for iSeason=1:1:numel(Seasons);
         
       end
     end
+    %overplot distribution maxima
+    for iSegment=1:2
+      switch iSegment;
+        case 2; Colour = [255,128,000]./255;
+        case 1; Colour = [000,000,200]./255;
+      end
+      
+      %get data
+      Data = [0;squeeze(Hists(iSeason,iIndex,iSegment,:))];%the 0 lines it up with BinCent
+      x = [BinCent,BinCent(end:-1:1)];
+      y = [Data;-Data(end:-1:1)]'; y = y./nansum(abs(y)).*10; y = y+iIndex;
+      [~,idx] = max(y(1:floor(numel(y)./2)));
+      plot([1,1].*x(idx),[-1,1].*0.33+mean(y),'color',Colour,'linewi',2)
+      
+    end
+    
     
     
   end
@@ -252,6 +268,7 @@ for iSeason=1:1:numel(Seasons);
   set(gca,'ydir','reverse','fontsize',12)
   title(Seasons{iSeason},'fontsize',28)
   xlabel('Delay [minutes]','fontsize',12)
+  plot([0,0],[0,numel(Settings.Indices)+0.5],'k-')
   
   box on
   grid on

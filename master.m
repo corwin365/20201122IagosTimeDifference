@@ -33,12 +33,13 @@ MasterSettings.Run = [0, ...  %aa: generate airport geolocation dataset
                       0, ...  %dd: plot airport metadata
                       0, ...  %ee: plot flight paths used
                       0, ...  %ff: prepare climate indices
-                      1, ...  %gg: do and plot multilinear regression
+                      0, ...  %gg: do and plot multilinear regression
                       0, ...  %hh: do and plot relative histograms, one-way
-                      0, ...  %hi: do and plot relative box plots, one-way                      
+                      1, ...  %hi: do and plot relative box plots, one-way                      
                       0, ...  %ii: do and plot relative histograms, round-trip                  
-                      0, ...  %ij: do and plot relative boxplots, round-trip
-                      0];     %jj: time series of planes and indices
+                      1, ...  %ij: do and plot relative boxplots, round-trip
+                      0, ...  %jj: time series of planes and indices
+                      0];     %kk: time series of relative time taken
 
                     
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                    
@@ -531,7 +532,8 @@ if MasterSettings.Run(12) == 1;
   disp('----------> Producing time series of planes and indices ')
 
   %call routine
-  jj_planes_and_indices()
+  Settings.Frac = MasterSettings.IndexFraction;
+  jj_planes_and_indices(Settings)
   
   %tidy up
   clearvars -except MasterSettings
@@ -540,5 +542,35 @@ if MasterSettings.Run(12) == 1;
   
   %notification
   disp('x-x-x-x-x-> Time series of planes and indices plots SKIPPED')
+  
+end
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% 13. time series of relative time taken
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+if MasterSettings.Run(13) == 1;
+
+  %notification
+  disp('----------> Producing raw time series ')
+  
+  %set needed variables
+  Settings = struct();
+  Settings.NA         = MasterSettings.Airports.NA;
+  Settings.Eur        = MasterSettings.Airports.Eur; 
+  Settings.Frac       = MasterSettings.IndexFraction;
+  Settings.Seasons    = MasterSettings.Seasons;
+  
+  %call routine
+  kk_timetaken(Settings)
+  
+  %tidy up
+  clearvars -except MasterSettings
+  
+  else
+  
+  %notification
+  disp('x-x-x-x-x-> Raw time series SKIPPED')
   
 end

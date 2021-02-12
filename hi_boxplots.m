@@ -147,8 +147,8 @@ for iEW=1:2 %loop over east west
         for iPass=1:2 %first pass fill shades, second pass plot lines
         
           switch iSegment; 
-            case 1; Colour = [255,178,102]./255;
-            case 2; Colour = [102,178,255]./255;
+            case 2; Colour = [255,128,000]./255;
+            case 1; Colour = [000,255,255]./255;
           end
         
         %get data
@@ -156,17 +156,33 @@ for iEW=1:2 %loop over east west
         
         %plot box
         x = [BinCent,BinCent(end:-1:1)];
-        y = [Data;-Data(end:-1:1)]'; y = y./max(y)./2.25; y = y+iIndex;
+        y = [Data;-Data(end:-1:1)]'; y = y./nansum(abs(y)).*8; y = y+iIndex;
         if iPass == 1;
           patch(x,y,Colour,'edgecolor','none','facealpha',0.5)
         else
           plot(x,y,'color','k','linewi',0.25)
         end
-
        
         end
+        
+                
       end
-      
+      %overplot distribution maxima
+      for iSegment=1:2
+        switch iSegment;
+          case 2; Colour = [255,128,000]./255;
+          case 1; Colour = [000,000,200]./255;
+        end
+        
+        %get data
+        Data = [0;squeeze(Hists(iSeason,iEW,iIndex,iSegment,:))];%the 0 lines it up with BinCent
+        x = [BinCent,BinCent(end:-1:1)];
+        y = [Data;-Data(end:-1:1)]'; y = y./nansum(abs(y)).*10; y = y+iIndex;
+        [~,idx] = max(y(1:floor(numel(y)./2)));
+        plot([1,1].*x(idx),[-1,1].*0.33+mean(y),'color',Colour,'linewi',2)
+        
+      end
+
       
     end
     
@@ -183,9 +199,11 @@ for iEW=1:2 %loop over east west
     else
       xlabel('Delay [minutes]','fontsize',12)
     end
+    plot([0,0],[0,numel(Settings.Indices)+0.5],'k-')
     
     box on
     grid on
+    drawnow
     
   end
 end

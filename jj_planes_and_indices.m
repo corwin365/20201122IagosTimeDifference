@@ -1,4 +1,4 @@
-function [] = jj_planes_and_indices
+function [] = jj_planes_and_indices(Settings)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -17,6 +17,7 @@ subplot = @(m,n,p) subtightplot (m, n, p, 0.02, 0.05, 0.2);
 %get the flight metadata
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+FRAC = Settings.Frac;
 load('data/flight_data.mat')
 
 
@@ -92,7 +93,7 @@ set(gca,'xtick',datenum(1995:3:2020,1,1),'xticklabel',datestr(datenum(1995:3:202
 %% find and plot climate indices, for comparison
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-clearvars -except Settings Scale Results  subplot
+clearvars -except Settings Scale Results FRAC subplot
 
 load('data/indices.mat')
 
@@ -101,8 +102,9 @@ Ind = {'ENSO','HadCRUT','QBO','NAM','TSI'};
 
 for iIndex=1:1:numel(Ind)
   subplot(8,1,3+iIndex)
-  plot(Results.Date,Indices.(Ind{iIndex}),'w-','linewi',1)
+  plot(Results.Date,Indices.(Ind{iIndex}),'w-','linewi',1.25)
   set(gca,'xtick',datenum(1995:3:2020,1,1),'xticklabel',datestr(datenum(1995:3:2020,1,1),'yyyy'))
+   
   axis([Scale(1) Scale(end) -1.1 1.1])  
   box on
   set(gca,'tickdir','out','color',[1,1,1].*0.7)
