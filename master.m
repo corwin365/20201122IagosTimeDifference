@@ -33,11 +33,12 @@ MasterSettings.Run = [0, ...  %aa: generate airport geolocation dataset
                       0, ...  %dd: plot airport metadata
                       0, ...  %ee: plot flight paths used
                       0, ...  %ff: prepare climate indices
-                      0, ...  %gg: do and plot multilinear regression
+                      0, ...  %gg: do and plot multilinear regression, one-way
+                      1, ...  %gh: do and plot multilinear regression, round-trip
                       0, ...  %hh: do and plot relative histograms, one-way
-                      1, ...  %hi: do and plot relative box plots, one-way                      
+                      0, ...  %hi: do and plot relative box plots, one-way                      
                       0, ...  %ii: do and plot relative histograms, round-trip                  
-                      1, ...  %ij: do and plot relative boxplots, round-trip
+                      0, ...  %ij: do and plot relative boxplots, round-trip
                       0, ...  %jj: time series of planes and indices
                       0];     %kk: time series of relative time taken
 
@@ -350,13 +351,13 @@ end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% 7. regress data against climate indices
+%% 7. regress data against climate indices, one-way
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if MasterSettings.Run(7) == 1;
 
   %notification
-  disp('----------> Regressing against climate indices ')
+  disp('----------> Regressing against climate indices, one-way ')
   
   %set needed variables
   Settings = struct();
@@ -375,15 +376,46 @@ if MasterSettings.Run(7) == 1;
   else
   
   %notification
-  disp('x-x-x-x-x-> Regression against climate indices SKIPPED')
+  disp('x-x-x-x-x-> Regression against climate indices, one-way SKIPPED')
   
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% 8. difference histograms, one-way
+%% 8. regress data against climate indices, round-trip
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if MasterSettings.Run(8) == 1;
+
+  %notification
+  disp('----------> Regressing against climate indices, round-trip ')
+  
+  %set needed variables
+  Settings = struct();
+  Settings.Indices = MasterSettings.Indices;
+  Settings.Seasons = MasterSettings.Seasons;
+  Settings.NA      = MasterSettings.Airports.NA;
+  Settings.Eur     = MasterSettings.Airports.Eur; 
+  Settings.Reg     = MasterSettings.Reg;
+  
+  %call routine
+  gh_regression2(Settings)
+  
+  %tidy up
+  clearvars -except MasterSettings
+  
+  else
+  
+  %notification
+  disp('x-x-x-x-x-> Regression against climate indices, round-trip SKIPPED')
+  
+end
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% 9. difference histograms, one-way
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+if MasterSettings.Run(9) == 1;
 
   %notification
   disp('----------> Producing one-way distance histograms ')
@@ -414,10 +446,10 @@ if MasterSettings.Run(8) == 1;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% 9. difference box plots, one-way
+%% 10. difference box plots, one-way
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-if MasterSettings.Run(9) == 1;
+if MasterSettings.Run(10) == 1;
 
   %notification
   disp('----------> Producing one-way distance  box plots ')
@@ -450,10 +482,10 @@ end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% 10. difference histograms, round-trip
+%% 11. difference histograms, round-trip
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-if MasterSettings.Run(10) == 1;
+if MasterSettings.Run(11) == 1;
 
   %notification
   disp('----------> Producing round-trip distance histograms ')
@@ -487,10 +519,10 @@ end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% 11. difference histograms, round-trip
+%% 12. difference histograms, round-trip
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-if MasterSettings.Run(11) == 1;
+if MasterSettings.Run(12) == 1;
 
   %notification
   disp('----------> Producing round-trip distance boxplots ')
@@ -523,10 +555,10 @@ end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% 12. metadata about individual aircraft
+%% 13. metadata about individual aircraft
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-if MasterSettings.Run(12) == 1;
+if MasterSettings.Run(13) == 1;
 
   %notification
   disp('----------> Producing time series of planes and indices ')
@@ -547,10 +579,10 @@ end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% 13. time series of relative time taken
+%% 14. time series of relative time taken
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-if MasterSettings.Run(13) == 1;
+if MasterSettings.Run(14) == 1;
 
   %notification
   disp('----------> Producing raw time series ')
