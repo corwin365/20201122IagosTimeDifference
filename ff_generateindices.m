@@ -59,7 +59,7 @@ for iIndex=1:1:numel(Settings.Indices)
     case 'TSI'
       TSI = load('indices/tsi.mat');
       TSI.TSI(TSI.TSI < 1358) = NaN; %very noisy - remove an extreme outlier
-      TSI.TSI = smoothn(TSI.TSI,[15,1]);%very noisy - smooth to make it fair
+      TSI.TSI = smoothn(TSI.TSI,[31,1]);%very noisy - smooth to make it fair
       a = interp1(TSI.Time,TSI.TSI,TimeScale);
       clear TSI
     case 'Time'
@@ -69,6 +69,8 @@ for iIndex=1:1:numel(Settings.Indices)
       stop
   end
   
+  %store the original range, in case we need to refer to it.
+  Indices.OriginalRange.(Settings.Indices{iIndex}) = minmax(a(:));
  
   %normalise
   a = a./range(a);

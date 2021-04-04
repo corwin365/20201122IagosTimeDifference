@@ -286,7 +286,7 @@ clear iSeason Flights tRel mdl Coefs Beta RouteData Indices FlightData iEast Dir
 
 %create figure
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-figure
+% figure
 clf
 set(gcf,'color','w')
 subplot = @(m,n,p) subtightplot (m, n, p, [0.02,0.02], [0.12,0.09], 0.15);
@@ -301,7 +301,7 @@ Colours = [[ 57,159,228]; ...
            [152, 51, 91]; ...
            [255,209,107]; ...
            [ 69,174, 98]]./255;
-Letters = 'abcdefghijkl';         
+Letters = 'behkn';         
          
          
 %plot individual panels         
@@ -381,12 +381,9 @@ for iSeason=1:1:numel(Seasons)
     
     
   %tidy
-% %   if iSeason == 1;
-% %     if iEast == 1; title('Eastward','fontsize',24);
-% %     else;          title('Westward','fontsize',24);
-% %     end
-% %   end
-% %   if iEast ~= 1; set(gca,'yaxislocation','right'); end
+  if iSeason == 1;
+    title('Round-trip','fontsize',24);
+  end
   
   set(gca,'ytick',[])
   ylabel(Seasons{iSeason},'fontsize',24);

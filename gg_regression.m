@@ -218,7 +218,7 @@ Colours = [[ 57,159,228]; ...
            [152, 51, 91]; ...
            [255,209,107]; ...
            [ 69,174, 98]]./255;
-Letters = 'abcdefghijkl';         
+Letters = 'acdfgijlmop';         
          
          
 %plot individual panels         
@@ -237,7 +237,7 @@ for iSeason=1:1:numel(Seasons)
     
     %set axis lengths
     if iEast == 1; XRange = [-32,22]; TextLoc = -31;
-    else           XRange = [-20,44]; TextLoc = 24;
+    else           XRange = [-20,44]; TextLoc = 12;
     end
     YRange = [0.5,size(Reg.Est,3)+1.5];
     

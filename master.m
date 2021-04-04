@@ -1,6 +1,5 @@
 clear all
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %IAGOS travel time study, master processing script
@@ -25,26 +24,29 @@ clear all
 %this is a list of programme components in order - 1 to run, 0 to skip
 %this is just to save runtime - if you want a full reset, set all to 1.
 %IF IN DOUBT, RUN THEM ALL, as there may be some unexpected dependencies
-%two-letter prefixes refer to the actual functions called
+%two-letter prefixes refer to the actual functions called - the naming
+%convention is related to the order I wrote them and has no further meaning
 
 MasterSettings.Run = [0, ...  %aa: generate airport geolocation dataset
                       0, ...  %bb: find and store all flights between regions
                       0, ...  %cc: rearrange data into routes
                       0, ...  %dd: plot airport metadata
                       0, ...  %ee: plot flight paths used
-                      0, ...  %ff: prepare climate indices
+                      1, ...  %ff: prepare climate indices
                       0, ...  %gg: do and plot multilinear regression, one-way
-                      1, ...  %gh: do and plot multilinear regression, round-trip
+                      0, ...  %gh: do and plot multilinear regression, round-trip
                       0, ...  %hh: do and plot relative histograms, one-way
                       0, ...  %hi: do and plot relative box plots, one-way                      
                       0, ...  %ii: do and plot relative histograms, round-trip                  
                       0, ...  %ij: do and plot relative boxplots, round-trip
-                      0, ...  %jj: time series of planes and indices
+                      1, ...  %jj: time series of planes and indices
                       0];     %kk: time series of relative time taken
 
                     
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                    
 %airports to include. Those with too few flights will be discarded later
+%These were selected by hand, using maps generated from the output of
+%routine aa.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %North America
@@ -118,10 +120,8 @@ MasterSettings.DataDir = [LocalDataDir,'/IAGOS/Timeseries/'];
 
 %what climate indices to use?
 %data will be plotted and multilinear regressed about these
-%all will be normalised to a range of 1
+%all will be normalised to a range of -1 to 1 (except HadCRUT)
 MasterSettings.Indices = {'ENSO','QBO','HadCRUT','NAM','TSI','Time'};
-% % MasterSettings.Indices = {'QBO','ENSO','HadCRUT','NAM','TSI','NAO'};
-% MasterSettings.Indices = {'HadCRUT'};
 
 %what fraction of the data should be used for index-comparison histograms?
 MasterSettings.IndexFraction = 0.2; %1 = all data
@@ -138,7 +138,7 @@ MasterSettings.IndexHistSmooth = 3; %must be odd
 MasterSettings.Reg.Lag   = 0; %1 for yes, 0 for no
 MasterSettings.Reg.Steps = [-60,-30,-10,-5,-2,0]; %values to try
 
-%what rage should we compute ROUND TRIP histograms over
+%what range should we compute ROUND TRIP histograms over
 %relative to a single trip
 MasterSettings.RTRelativeTime = [1.9,2.1]; 
 

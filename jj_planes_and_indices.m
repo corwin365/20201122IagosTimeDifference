@@ -8,7 +8,8 @@ function [] = jj_planes_and_indices(Settings)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-figure
+% figure
+clf
 set(gcf,'color','w')
 subplot = @(m,n,p) subtightplot (m, n, p, 0.02, 0.05, 0.2);
 
@@ -50,7 +51,7 @@ Store = Store(end:-1:1,:);
 
 %% plot as shaded filled cumulative contours
 
-subplot(8,1,[1:3])
+subplot(9,1,[1:3])
 hold on
 
 Store2 = cumsum(Store,1);
@@ -78,7 +79,7 @@ for iPlane=1:1:numel(Planes)
   
   patch(x,y,Colours(iPlane,:),'edgecolor','none')
   
-  text(datenum(2020,6,1),15.*(iPlane-1),Planes(iPlane),'color',Colours(iPlane,:))
+  text(Scale(end)+180,15.*(iPlane-1),Planes(iPlane),'color',Colours(iPlane,:))
   drawnow
   
 end
@@ -98,20 +99,33 @@ clearvars -except Settings Scale Results FRAC subplot
 load('data/indices.mat')
 
 
-Ind = {'ENSO','HadCRUT','QBO','NAM','TSI'};
+Ind = {'ENSO','HadCRUT','QBO','NAM','TSI','Time'};
+RoundDP = [0,2,0,1,1,0];
 
 for iIndex=1:1:numel(Ind)
-  subplot(8,1,3+iIndex)
+  subplot(9,1,3+iIndex)
   plot(Results.Date,Indices.(Ind{iIndex}),'w-','linewi',1.25)
   set(gca,'xtick',datenum(1995:3:2020,1,1),'xticklabel',datestr(datenum(1995:3:2020,1,1),'yyyy'))
    
   axis([Scale(1) Scale(end) -1.1 1.1])  
   box on
   set(gca,'tickdir','out','color',[1,1,1].*0.7)
-  text(datenum(2020,6,1),0.5,Ind{iIndex})
+%   text(Scale(end)+180,0,Ind{iIndex})
   if iIndex ~= numel(Ind); set(gca,'xticklabel',[]); end
   ylabel(Ind{iIndex})
   
+  %also label with the original range
+  OR = Indices.OriginalRange.(Ind{iIndex});
+  
+  if strcmp(Ind{iIndex},'Time') ~= 1;
+    text(Scale(end)+180,-1,num2str(round(   OR(1),RoundDP(iIndex))),'fontsize',9);
+    text(Scale(end)+180, 0,num2str(round(mean(OR),RoundDP(iIndex))),'fontsize',9);
+    text(Scale(end)+180, 1,num2str(round(   OR(2),RoundDP(iIndex))),'fontsize',9);
+  else
+    text(Scale(end)+180,-1,datestr(min( OR),'mm/yyyy'),'fontsize',9);
+    text(Scale(end)+180, 0,datestr(mean(OR),'mm/yyyy'),'fontsize',9);
+    text(Scale(end)+180, 1,datestr(max( OR),'mm/yyyy'),'fontsize',9);
+  end
 end
 
 
