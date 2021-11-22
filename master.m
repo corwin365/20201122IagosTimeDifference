@@ -27,20 +27,20 @@ clear all
 %two-letter prefixes refer to the actual functions called - the naming
 %convention is related to the order I wrote them and has no further meaning
 
-MasterSettings.Run = [0, ...  %aa: generate airport geolocation dataset
-                      0, ...  %bb: find and store all flights between regions
-                      0, ...  %cc: rearrange data into routes
+MasterSettings.Run = [1, ...  %aa: generate airport geolocation dataset
+                      1, ...  %bb: find and store all flights between regions
+                      1, ...  %cc: rearrange data into routes
                       0, ...  %dd: plot airport metadata
-                      0, ...  %ee: plot flight paths used
+                      1, ...  %ee: plot flight paths used
                       1, ...  %ff: prepare climate indices
-                      0, ...  %gg: do and plot multilinear regression, one-way
-                      0, ...  %gh: do and plot multilinear regression, round-trip
-                      0, ...  %hh: do and plot relative histograms, one-way
-                      0, ...  %hi: do and plot relative box plots, one-way                      
-                      0, ...  %ii: do and plot relative histograms, round-trip                  
-                      0, ...  %ij: do and plot relative boxplots, round-trip
+                      1, ...  %gg: do and plot multilinear regression, one-way
+                      1, ...  %gh: do and plot multilinear regression, round-trip
+                      1, ...  %hh: do and plot relative histograms, one-way
+                      1, ...  %hi: do and plot relative box plots, one-way                      
+                      1, ...  %ii: do and plot relative histograms, round-trip                  
+                      1, ...  %ij: do and plot relative boxplots, round-trip
                       1, ...  %jj: time series of planes and indices
-                      0];     %kk: time series of relative time taken
+                      1];     %kk: time series of relative time taken
 
                     
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                    

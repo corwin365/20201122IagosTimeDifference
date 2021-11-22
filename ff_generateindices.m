@@ -43,6 +43,7 @@ for iIndex=1:1:numel(Settings.Indices)
       a = interp1(ENSO.Time,ENSO.Nino34,TimeScale);
       clear ENSO
     case 'HadCRUT'
+%       HadCRUT = rCDF('indices/HadCRUT.4.6.0.0.median.nc');
       HadCRUT = rCDF('indices/HadCRUT.4.6.0.0.median.nc');
       HadCRUT.MatlabTime = datenum(1850,1,HadCRUT.time);
       HadCRUT.NH = squeeze(nanmean(HadCRUT.temperature_anomaly(:,HadCRUT.latitude > 0,:),[1,2]));
