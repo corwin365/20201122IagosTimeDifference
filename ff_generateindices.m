@@ -35,7 +35,6 @@ for iIndex=1:1:numel(Settings.Indices)
   switch Settings.Indices{iIndex}
     case 'QBO'
       QBO = load('indices/QBO.mat');
-      QBO.Time = floor(QBO.Time); %shift from noon to midnight to make the logic easier - on a 91-day smoothing this is very minor...
       a = interp1(QBO.Time,QBO.QBO,TimeScale);
       clear QBO
     case 'ENSO'

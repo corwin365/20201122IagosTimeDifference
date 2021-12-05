@@ -56,6 +56,7 @@ clear iDep iArr iSeason Flights NPorts E
 %coefficients from relative time to minutes
 MedianFlightTime = nanmedian(FlightData.Results.t(:))./60; %MINUTES
 
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% generate lag analysis data
 % if lagging is switched off in the master settings

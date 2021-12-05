@@ -27,11 +27,11 @@ clear all
 %two-letter prefixes refer to the actual functions called - the naming
 %convention is related to the order I wrote them and has no further meaning
 
-MasterSettings.Run = [1, ...  %aa: generate airport geolocation dataset
-                      1, ...  %bb: find and store all flights between regions
-                      1, ...  %cc: rearrange data into routes
+MasterSettings.Run = [0, ...  %aa: generate airport geolocation dataset
+                      0, ...  %bb: find and store all flights between regions
+                      0, ...  %cc: rearrange data into routes
                       0, ...  %dd: plot airport metadata
-                      1, ...  %ee: plot flight paths used
+                      0, ...  %ee: plot flight paths used
                       1, ...  %ff: prepare climate indices
                       1, ...  %gg: do and plot multilinear regression, one-way
                       1, ...  %gh: do and plot multilinear regression, round-trip
