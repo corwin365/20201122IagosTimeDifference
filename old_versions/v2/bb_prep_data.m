@@ -1,13 +1,9 @@
-function [] = bb_prep_data(Paths,Airports,Settings)
+function [] = bb_prep_data(Settings)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %find all flights between the chosen airports in Europe and North America
-%then retain their metadata and some basic info (e.g. path, u, v, T)
-%
-%this routine is almost definitely the dominant runtime sink, and will 
-%only need rerunning if new data is added. 
-%
+%then retain their metadata and some basic info (e.g. path, u, v)
 %
 %additional data checks:
 %A. remove any data within 100km of start and end of flight, to avoid 
@@ -15,7 +11,7 @@ function [] = bb_prep_data(Paths,Airports,Settings)
 %B. modified to retain unique identifiers for individual flights, to 
 %identify any issues due to equipment change
 %
-%Corwin Wright, c.wright@bath.ac.uk, 2021/12/28
+%Corwin Wright, c.wright@bath.ac.uk, 2020/12/27
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -24,35 +20,34 @@ function [] = bb_prep_data(Paths,Airports,Settings)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %flight filenames
-FlightFiles = wildcardsearch(Paths.AeolusData,'*.nc');
+Flights = wildcardsearch(Settings.DataDir,'*.nc');
 
 %possible airports, and their locations
-Airports.IDs  = [Airports.Eur,Airports.NA];
+Airports.IDs  = [Settings.Eur,Settings.NA];
 Airports.Lons = NaN(numel(Airports.IDs),1);
 Airports.Lats = Airports.Lons;
 
 %metainfo about flights
-Flights.Dep     = cell(numel(FlightFiles),1);  %flight start
-Flights.Arr     = cell(numel(FlightFiles),1);  %flight end
-Flights.t       = NaN( numel(FlightFiles),1);  %flight time
-Flights.Date    = NaN( numel(FlightFiles),1);  %date of flight 
-Flights.PlaneID = cell(numel(FlightFiles),1);  %unique aircraft identifier
-Flights.InstID  = cell(numel(FlightFiles),1);  %unique instrument identifier
+Results.Dep     = cell(numel(Flights),1);  %flight start
+Results.Arr     = cell(numel(Flights),1);  %flight end
+Results.t       = NaN( numel(Flights),1);  %flight time
+Results.Date    = NaN( numel(Flights),1);  %date of flight 
+Results.PlaneID = cell(numel(Flights),1);  %unique aircraft identifier
+Results.InstID  = cell(numel(Flights),1);  %unique instrument identifier
 
 %downsampled flight tracks, for later analysis
-Flights.Paths   = {};
+Results.Paths   = {};
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% where are the airports?
 %this information isn't used here, but will be needed to generate maps later
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-Codes = load([Paths.StoreDir,'/airport_codes_',Paths.SourceIdentifier,'.mat']);
+Codes = load('data/airport_codes.mat');
 for iAirport=1:1:numel(Airports.IDs)
   
   ID = Airports.IDs{iAirport};
   ID = find(contains(Codes.Codes,ID));
-  if numel(ID) == 0; continue; end %airport not found in data
   Coords = strsplit(Codes.Coords{ID},' ');
   
   Airports.Lons(iAirport) = str2num(Coords{1});
@@ -60,29 +55,22 @@ for iAirport=1:1:numel(Airports.IDs)
 end
 clear Codes iAirport ID Coords
 
-%drop all airports that haven't been found
-Good = find(~isnan(Airports.Lons+Airports.Lats));
-Airports.IDs  = Airports.IDs( Good);
-Airports.Lons = Airports.Lons(Good);
-Airports.Lats = Airports.Lats(Good);
-clear Good
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% now, find all the flights between these east-west airport-pairs
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-textprogressbar('Processing flight files ')
+textprogressbar('Processing flights ')
 Count = 0; %count of flights which meet criteria, for indexing purposes
-for iFlight = 1:1:numel(FlightFiles)
+for iFlight = 1:1:numel(Flights)
 try
- if mod(iFlight,100) == 0; textprogressbar(iFlight./numel(FlightFiles).*100); end
+ if mod(iFlight,100) == 0; textprogressbar(iFlight./numel(Flights).*100); end
  
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   % process metadata
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   
   %load the flight 
-  Data = rCDF(FlightFiles{iFlight});
+  Data = rCDF(Flights{iFlight});
   
   %get the file metadata
   MetaData = Data.MetaData.Attributes.Global;  
@@ -109,7 +97,7 @@ try
   clear ID
   
   %convert date to Matlab time
-  Date = datenum(Date,'YYYY-mm-DDTHH:MM:ss');
+  Date =datenum(Date,'YYYY-mm-DDTHH:MM:ss');
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   % is this a valid flight?
@@ -120,10 +108,10 @@ try
   if ~ismember(Dep,Airports.IDs); continue; end    
   
   %find which continent the arrival and depature are in
-  Start.NA  = ismember(Dep,Airports.NA);
-  Start.Eur = ismember(Dep,Airports.Eur);
-  End.NA    = ismember(Arr,Airports.NA);
-  End.Eur   = ismember(Arr,Airports.Eur);    
+  Start.NA  = ismember(Dep,Settings.NA);
+  Start.Eur = ismember(Dep,Settings.Eur);
+  End.NA    = ismember(Arr,Settings.NA);
+  End.Eur   = ismember(Arr,Settings.Eur);    
     
   %are the two ends on different continents?
   if Start.NA  + End.NA  == 2; continue; end
@@ -154,12 +142,12 @@ try
   Count = Count+1; %valid flight
   
   %store the information we want
-  Flights.Dep{    Count} = Dep;
-  Flights.Arr{    Count} = Arr;
-  Flights.t(      Count) = nanmax(Data.UTC_time) - nanmin(Data.UTC_time); %seconds
-  Flights.Date(   Count) = Date;
-  Flights.PlaneID{Count} = Plane;
-  Flights.InstID{ Count} = Instrument;
+  Results.Dep{    Count} = Dep;
+  Results.Arr{    Count} = Arr;
+  Results.t(      Count) = nanmax(Data.UTC_time) - nanmin(Data.UTC_time); %seconds
+  Results.Date(   Count) = Date;
+  Results.PlaneID{Count} = Plane;
+  Results.InstID{ Count} = Instrument;
  
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   % store flight path
@@ -167,17 +155,17 @@ try
 
   
   %store the full flight path, downsampled to ~Settings.MinTime
-  IAGOS = prep_iagos(FlightFiles{iFlight},'SamplingRate',Settings.ResampleTime./24./60);
-  Flights.Paths.Lat{Count} = IAGOS.lat;
-  Flights.Paths.Lon{Count} = IAGOS.lon;
+  IAGOS = prep_iagos(Flights{iFlight},'SamplingRate',Settings.ResampleTime./24./60);
+  Results.Paths.Lat{Count} = IAGOS.lat;
+  Results.Paths.Lon{Count} = IAGOS.lon;
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   % store some geophysical information, if it exists
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-  if isfield(IAGOS,'zon_wind_AC'); Flights.Paths.U{Count} = IAGOS.zon_wind_AC; else Flights.Paths.U{Count} = NaN; end
-  if isfield(IAGOS,'mer_wind_AC'); Flights.Paths.V{Count} = IAGOS.mer_wind_AC; else Flights.Paths.V{Count} = NaN; end
-  if isfield(IAGOS,'air_temp_AC'); Flights.Paths.T{Count} = IAGOS.air_temp_AC; else Flights.Paths.T{Count} = NaN; end
+  if isfield(IAGOS,'zon_wind_AC'); Results.Paths.U{Count} = IAGOS.zon_wind_AC; else Results.Paths.U{Count} = NaN; end
+  if isfield(IAGOS,'mer_wind_AC'); Results.Paths.V{Count} = IAGOS.mer_wind_AC; else Results.Paths.V{Count} = NaN; end
+  if isfield(IAGOS,'air_temp_AC'); Results.Paths.T{Count} = IAGOS.air_temp_AC; else Results.Paths.T{Count} = NaN; end
 
 
 
@@ -188,7 +176,7 @@ catch; end
 end
 textprogressbar(100)  ; textprogressbar('!')
 
-clear Arr Dep Date Plane Instrument Data FlightFiles iFlight
+clear Arr Dep Date Plane Instrument Data Flights iFlight
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % drop empty rows of data 
@@ -196,12 +184,12 @@ clear Arr Dep Date Plane Instrument Data FlightFiles iFlight
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-Flights.Dep     = Flights.Dep(    1:Count);
-Flights.Arr     = Flights.Arr(    1:Count);
-Flights.t       = Flights.t(      1:Count);
-Flights.Date    = Flights.Date(   1:Count);
-Flights.PlaneID = Flights.PlaneID(1:Count);
-Flights.InstID  = Flights.InstID( 1:Count);
+Results.Dep     = Results.Dep(    1:Count);
+Results.Arr     = Results.Arr(    1:Count);
+Results.t       = Results.t(      1:Count);
+Results.Date    = Results.Date(   1:Count);
+Results.PlaneID = Results.PlaneID(1:Count);
+Results.InstID  = Results.InstID( 1:Count);
 clear Count
 
 
@@ -210,11 +198,4 @@ clear Count
 % save
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%store the airport list used as well as the choices made about data handling, to check later
-Settings.Airports = Airports;
-
-%and save
-save([Paths.StoreDir,'/flight_data_',Paths.SourceIdentifier,'.mat'],'Flights','Settings')
-
-%and return
-return
+save('data/flight_data.mat','Results','Airports','Settings')

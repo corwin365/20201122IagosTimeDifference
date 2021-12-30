@@ -1,4 +1,4 @@
-function [] = aa_get_codes(Paths)
+function [] = aa_get_codes(Settings)
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -15,7 +15,8 @@ function [] = aa_get_codes(Paths)
 
 
 %find files
-Flights = wildcardsearch(Paths.AeolusData ,'*.nc');
+Settings.DataDir = [LocalDataDir,'/IAGOS/Timeseries/'];
+Flights = wildcardsearch(Settings.DataDir,'*.nc');
 
 %find starts and ends
 Codes  = {};
@@ -66,12 +67,8 @@ textprogressbar(100);textprogressbar('!')
 [Codes,ia] = unique(Codes);
 Coords = Coords(ia);
 
-clearvars -except Codes Coords Paths
+clearvars -except Codes Coords
 disp('Unique airport codes identified and geolocated')
 
 
-%save
-save([Paths.StoreDir,'/airport_codes_',Paths.SourceIdentifier,'.mat'],'Codes','Coords')
-
-%and return
-return
+save('data/airport_codes.mat','Codes','Coords')
