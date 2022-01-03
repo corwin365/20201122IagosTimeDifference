@@ -21,46 +21,40 @@ Flights = Flights.Flights;
 %which flights are actually used?
 load([Paths.StoreDir,'/routes_',Paths.SourceIdentifier,'_',Paths.PPIdentifier,'.mat']);
 
-%identify direction of each individual flight
-Working.Eward = NaN.*Working.Used;
-for iRoute=1:1:size(RouteInfo,1)
-  OnThisRoute = find(Working.Route == RouteInfo{iRoute,1});
-  Working.Eward(OnThisRoute) = RouteInfo{iRoute,5};
-end; clear iRoute OnThisRoute
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% find monthly-mean relative flight time for each plane
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %time scale
-[yy1,~,~]  = datevec(min(Flights.Date(Working.Used == 1)));
-[yy2,~,~]  = datevec(max(Flights.Date(Working.Used == 1)));
+[yy1,~,~]  = datevec(min(Flights.Date(Working.InSeason.All == 1)));
+[yy2,~,~]  = datevec(max(Flights.Date(Working.InSeason.All == 1)));
 TimeScale = datenum(yy1,-1:3:(yy2-yy1+1).*12,1);  %the -1 ensures we have seasonal chunks, by offsetting to start in DJF
 clear yy1 yy2
 
 %indices for planes
-[PlaneNames,~,ic]= unique(Flights.PlaneID(Working.Used == 1));
+[PlaneNames,~,ic]= unique(Flights.PlaneID(Working.InSeason.All == 1));
 
 %storage array
 Store = NaN(numel(PlaneNames),numel(TimeScale),2); %2 is east or west
 N     = Store; %how many flights contribute to each symbol?
-for iEW=1:2
+for iEW=0:1
   for iPlane=1:1:numel(PlaneNames)
-    ThisGroup = find(ic == iPlane & Working.Eward(Working.Used == 1) == iEW);
+    ThisGroup = find(ic == iPlane & Working.Eastward(Working.InSeason.All == 1) == iEW);
     
-    Store(iPlane,:,iEW) = bin2matN(1,Flights.Date(ThisGroup), ...
-                                     Working.tRel(ThisGroup), ...
-                                     TimeScale,'@nanmean');
-    N(    iPlane,:,iEW) = bin2matN(1,Flights.Date(ThisGroup), ...
-                                     ones(size(ThisGroup)), ...
-                                     TimeScale,'@nansum');
+    Store(iPlane,:,iEW+1) = bin2matN(1,Flights.Date(    ThisGroup), ...
+                                       Working.tRel.All(ThisGroup), ...
+                                       TimeScale,'@nanmean');
+    N(    iPlane,:,iEW+1) = bin2matN(1,Flights.Date(ThisGroup), ...
+                                       ones(size(ThisGroup)), ...
+                                       TimeScale,'@nansum');
   end
 end
 
 %scale delays by overall median flight time
+OverallMedian = 500 %temporary
 Store = (Store.*OverallMedian) - OverallMedian;
-Store = Store./60; %minutes
+% Store = Store./60; %minutes
 
 
 %scale N flights to produce sensible point sizes

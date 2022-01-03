@@ -17,7 +17,7 @@ clear all
 %%%%%%%%%%%%%%%%%%%%%%%5%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%5%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %which parts to run?
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -34,7 +34,8 @@ MainSettings.Run = [0, ...  %aa: generate airport geolocation dataset. Doesn't u
                     0, ...  %dd: split data into routes, normalise flight times, and generate paired routes
                     0, ...  %ee: plot time series of planes used and climate indices
                     0, ...  %ff: plot time taken as a function of time and plane
-                    1, ...  %gg: relative duration violin plots
+                    0, ...  %gg: index-split KDFs
+                    0, ...  %hh: index-split summary stats
                     0];     
 
 
@@ -71,11 +72,11 @@ MainSettings.Filtering.MinFlights = 10;
 %allowable range of flight times relative to median for route
 %this is to exclude unusual flights due to e.g. rerouting
 %these are only applied to SEASONAL data - analyses at the all-data level will include outliers
-MainSettings.Filtering.RelativeTime = [0.85,1.15]; 
+MainSettings.Filtering.RelativeTime = [0.87,1.15]; %.87 is 15% less than 1
 
 %deseasonalise flights?
 MainSettings.Filtering.DeSeasFlights = 0; %0 no, 1 yes
-MainSettings.Filtering.DeSeasPeriod  = 31; %if yes above, how many days should we use as a seasonal averaging window? This will be rounded UP to give whole days at each end of the window
+MainSettings.Filtering.DeSeasPeriod  = 93; %if yes above, how many days should we use as a seasonal averaging window? This will be rounded UP to give whole days at each end of the window
 
 %what is the maximum time difference between two flights paired as a return?
 MainSettings.Filtering.MaxDt =2; %days
@@ -103,12 +104,12 @@ MainSettings.TimeRange= [datenum(1994,8,3),datenum(2019,12,31)];
 %these don't have to be actual seasons - they could be any arbitrary set of days-of-year, and can overlap
 %the programme will use the names of the sub-structures as the "season" names
 %
-%reserved names not to be used: 'tRel','Route','Used','Seasons', 'Indices' (used as variables inside same structs later)
+%reserved names not to be used: All','tRel','Route','Used','Seasons', 'Indices' (used as variables inside same structs later)
 MainSettings.Seasons.DJF = date2doy(datenum(2000,12,1):datenum(2001, 3,1)-1);
 MainSettings.Seasons.MAM = date2doy(datenum(2000, 3,1):datenum(2000, 6,1)-1);
 MainSettings.Seasons.JJA = date2doy(datenum(2000, 6,1):datenum(2000, 9,1)-1);
 MainSettings.Seasons.SON = date2doy(datenum(2000, 9,1):datenum(2000,12,1)-1);
-% MainSettings.Seasons.All = 1:1:366;
+% % MainSettings.Seasons.FullYear = 1:1:366;
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                 
@@ -119,17 +120,30 @@ MainSettings.Seasons.SON = date2doy(datenum(2000, 9,1):datenum(2000,12,1)-1);
 %what climate indices to use?
 %data will be plotted and multilinear regressed about these
 %all will be normalised to a range of -1 to 1 (except HadCRUT)
-MainSettings.Indices = {'ENSO','QBO','HadCRUT','NAM','TSI','SeaIce'};
+MainSettings.Indices = {'ENSO','HadCRUT','NAO','QBO','SeaIce','TSI'}; %NAM, Fuel
 
 %what range should we normalise the indices over? (percentiles)
 MainSettings.IndexRange = [0,100];
 
-%how far should we smooth "background" data for deseasonalisation?
-MainSettings.DSSmooth = 29; %days - must be an odd positive integer
+%how far should we smooth "background" data for index deseasonalisation?
+MainSettings.DSSmooth = 61; %days - must be an odd positive integer
 
 %and which indices should be use deseasonalised, as opposed to raw?
 MainSettings.DSIndices = {'SeaIce'};
 
+%what colours should we assign the indices in figures?
+MainSettings.IndexColours.ENSO    = [ 57,159,228]./255;
+MainSettings.IndexColours.Fuel    = [  0,  0,  0]./255;
+MainSettings.IndexColours.HadCRUT = [196, 66, 79]./255;
+MainSettings.IndexColours.NAO     = [ 46,148,130]./255;
+MainSettings.IndexColours.NAM     = [ 69,174, 98]./255;
+MainSettings.IndexColours.QBO     = [113, 69,168]./255;
+MainSettings.IndexColours.SeaIce  = [152, 51, 91]./255;
+MainSettings.IndexColours.TSI     = [255,209,107]./255;
+
+
+%what percentiles should we use to divide the top and bottom % of data from the main distribution?
+MainSettings.HistoCutoff = 10;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                    
 %airports to include. Those with too few flights will be discarded later.
@@ -246,7 +260,7 @@ if MainSettings.Run(5) == 1;
   Settings.DeseasPeriod  = MainSettings.Filtering.DeSeasPeriod;
   Settings.MaxDt         = MainSettings.Filtering.MaxDt;
   
-  dd_routesplit(Paths,Settings,Airports);             %call routine
+  dd_routesplit_v2(Paths,Settings,Airports);          %call routine
   clearvars -except MainSettings Paths Airports       %tidy up
 
 
@@ -258,7 +272,9 @@ end
 
 if MainSettings.Run(6) == 1;                        
   disp('----------> Plotting time series of planes and indices')  %notification
-  ee_planes_and_indices(Paths,MainSettings.Indices)                %call routine
+  Settings.Indices = MainSettings.Indices;
+  Settings.Colours = MainSettings.IndexColours;
+  ee_planes_and_indices(Paths,Settings)                %call routine
   clearvars -except MainSettings Paths Airports                    %tidy up
 else; disp('x-x-x-x-x-> Plotting time series of planes and indices SKIPPED'); end
 
@@ -276,13 +292,31 @@ else; disp('x-x-x-x-x-> Plotting time series of flight times by plane SKIPPED');
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% GG. 
+%% GG. split data into index extremes, then plot KDFs
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if MainSettings.Run(8) == 1;                        
-  disp('----------> Plotting ')  %notification
-  disp('xpercent')
-  gg_times(Paths,MainSettings.Indices,MainSettings.Seasons, ...
-                 MainSettings.Filtering.RelativeTime)                %call routine
-  clearvars -except MainSettings Paths Airports                    %tidy up
-else; disp('x-x-x-x-x-> Plotting SKIPPED'); end
+  disp('----------> Plotting split-index KDFs ')  %notification
+  Settings.Indices      = MainSettings.Indices;
+  Settings.Seasons      = MainSettings.Seasons;
+  Settings.RelativeTime = MainSettings.Filtering.RelativeTime;
+  Settings.Colours      = MainSettings.IndexColours; 
+  Settings.CutOff       = MainSettings.HistoCutoff;
+  gg_indexsplit(Paths,Settings);                 %call routine
+  clearvars -except MainSettings Paths Airports  %tidy up
+else; disp('x-x-x-x-x-> Plotting split-index KDFs  SKIPPED'); end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% FF. plot time taken as a function of time and plane
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+if MainSettings.Run(9) == 1;                        
+  disp('----------> Plotting split-index summary')  %notification
+  Settings.Indices      = MainSettings.Indices;
+  Settings.Seasons      = MainSettings.Seasons;
+  Settings.RelativeTime = MainSettings.Filtering.RelativeTime;
+  Settings.Colours      = MainSettings.IndexColours; 
+  Settings.CutOff       = MainSettings.HistoCutoff;  
+  gh_indexsplitsummary(Paths,Settings);             %call routine
+  clearvars -except MainSettings Paths Airports      %tidy up
+else; disp('x-x-x-x-x-> Plotting split-index summary SKIPPED'); end

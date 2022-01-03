@@ -44,6 +44,11 @@ for iIndex=1:1:numel(Indices)
       a = interp1(ENSO.Time,ENSO.Nino34,TimeScale.Flights);
       b = interp1(ENSO.Time,ENSO.Nino34,TimeScale.Daily);      
       clear ENSO
+    case 'Fuel'
+      Fuel = load([Root,'/jet_fuel_price.mat']);
+      a = interp1(Fuel.Time,Fuel.Price,TimeScale.Flights);
+      b = interp1(Fuel.Time,Fuel.Price,TimeScale.Daily);      
+      clear Fuel
     case 'HadCRUT'
       HadCRUT = rCDF([Root,'/HadCRUT.5.0.1.0.analysis.anomalies.ensemble_mean.nc']);
       HadCRUT.MatlabTime = datenum(1850,1,HadCRUT.time);
@@ -56,6 +61,11 @@ for iIndex=1:1:numel(Indices)
       a = interp1(NAM.Time,NAM.NAM,TimeScale.Flights);
       b = interp1(NAM.Time,NAM.NAM,TimeScale.Daily); 
       clear NAM
+    case 'NAO'
+      NAO = load([Root,'/nao.mat']);
+      a = interp1(NAO.Time,NAO.NAO,TimeScale.Flights);
+      b = interp1(NAO.Time,NAO.NAO,TimeScale.Daily); 
+      clear NAO      
     case 'NAO'
       NAO = load([Root,'/nao.mat']);
       a = interp1(NAO.Date,NAO.NAO,TimeScale.Flights);
@@ -157,11 +167,8 @@ DateIndices.DS         = IndexStore.DS.Daily;
 clearvars -except Paths IndexRange DateIndices FlightIndices Indices
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% normalise the data (based on the daily data as these are less biased)
+%% normalise the data (based on the daily data as these are less biased than the flight data)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
-
 
 for iForm=1:2; %1 is raw, 2 is deseasonalised
 

@@ -1,4 +1,4 @@
-function [] = jj_planes_and_indices(Paths,IndicesToPlot)
+function [] = jj_planes_and_indices(Paths,Settings)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -8,6 +8,10 @@ function [] = jj_planes_and_indices(Paths,IndicesToPlot)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+
+IndicesToPlot = Settings.Indices;
+ColoursForIndices = Settings.Colours; 
+clear Settings
 
 figure
 clf
@@ -38,8 +42,8 @@ Indices = Indices.Daily;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-Results.PlaneID = Flights.PlaneID(Working.Used == 1);
-Results.Date    = Flights.Date(   Working.Used == 1);
+Results.PlaneID = Flights.PlaneID(Working.InSeason.All == 1);
+Results.Date    = Flights.Date(   Working.InSeason.All == 1);
 
 
 
@@ -110,9 +114,18 @@ box on
 set(gca,'tickdir','out','xaxislocation','top')
 set(gca,'xtick',datenum(1995:3:2020,1,1),'xticklabel',datestr(datenum(1995:3:2020,1,1),'yyyy'))
 
+% % %overlay three-month rolling mean number of flights
+% % Sigma = smoothn(nansum(Store,1),3);
+% % plot(Scale,Sigma,'k:','linewi',2)
+
+
+%tidy up
 
 clear Colours Flights ia ic iPlane Planes RouteInfo 
 clear y1 y2 x y ThisPlaneDates Store Store2
+
+
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% find and plot climate indices, for comparison
@@ -124,7 +137,7 @@ for iIndex=1:1:numel(IndicesToPlot)
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   subplot(3+numel(IndicesToPlot),1,3+iIndex)
   box on
-  set(gca,'tickdir','out','color',[1,1,1].*0.7)
+  set(gca,'tickdir','out','color',ColoursForIndices.(IndicesToPlot{iIndex}));%[1,1,1].*0.7)
   set(gca,'xtick',datenum(1995:3:2020,1,1),'xticklabel',datestr(datenum(1995:3:2020,1,1),'yyyy'))
   axis([Scale(1) Scale(end) -1.1 1.1])  
   hold on

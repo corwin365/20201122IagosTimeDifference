@@ -50,7 +50,6 @@ clear OutOfRange
 Seasons = fieldnames(Settings.Seasons);
 for iSeason=1:1:numel(Seasons);
   Working.(Seasons{iSeason}).Used  = Working.Used.*0;  %assume flights are NOT in the season until proved otherwise
-  Working.(Seasons{iSeason}).Route = Working.Used.*NaN; 
   Working.(Seasons{iSeason}).tRel  = Working.Used.*NaN;   
 end; clear iSeason
 
@@ -61,17 +60,18 @@ end; clear iSeason
 %identify all unique DEP and ARR airports
 UniqueAirports = unique(cat(1,FlightData.Dep,FlightData.Arr)); 
 
-
-%assign a unique numbers to each route
+%assign a unique number to each route
 RouteCount = 0;
 for iArr=1:1:numel(UniqueAirports)
   for iDep=1:1:numel(UniqueAirports)
+    if iArr == iDep; continue; end
 
     %find all flights with this ARR and DEP
     RouteCount = RouteCount+1;
     ThisArr  = find(ismember(FlightData.Arr,UniqueAirports{iArr}));
     ThisDep  = find(ismember(FlightData.Dep,UniqueAirports{iDep})); 
     ThisPair = intersect(ThisArr,ThisDep); 
+    if numel(ThisPair) ==0; continue; end
 
     %identify the endpoints
     RouteInfo{RouteCount,1} = RouteCount;    
@@ -80,7 +80,11 @@ for iArr=1:1:numel(UniqueAirports)
     RouteInfo{RouteCount,4} = numel(ThisPair);
 
     %is the flight eastward or westward?
-    if ismember(UniqueAirports{iDep},Airports.NA); E = 1; else E = 2; end  %1 eastward, 2 westward
+    if ismember(UniqueAirports{iDep},Airports.NA); 
+      E = 1; 
+    else                                           
+      E = 2; 
+    end  %1 eastward, 2 westward
     RouteInfo{RouteCount,5} = E;
 
     %and tie the flights on this route back to the orginal list
@@ -90,21 +94,19 @@ for iArr=1:1:numel(UniqueAirports)
 end
 clear iArr iDep RouteCount ThisArr ThisDep ThisPair UniqueAirports E
 
-
-%drop insufficiently used routes
-RouteN = cell2mat(RouteInfo(:,4));
+%drop insufficiently busy routes
+RouteN = NaN(1,size(RouteInfo,1));
+for iN=1:1:numel(RouteN);
+  if ~isempty(RouteInfo{iN,4}); RouteN(iN) = RouteInfo{iN,4}; end
+end; clear iN
 Good = find(RouteN >= Settings.MinFlights);
 Bad  = find(RouteN <  Settings.MinFlights);
 RouteInfo = RouteInfo(Good,:);
-for iBad=1:1:numel(Bad); 
-  Working.Used( Working.Route == Bad(iBad)) = 0; 
-end
+for iBad=1:1:numel(Bad); Working.Used( Working.Route == Bad(iBad)) = 0; end
 disp([num2str(sum(RouteN(Bad))),' flights dropped due to insufficiently busy routes at whole-dataset level'])
 clear Good Bad RouteN iBad iSeason
 disp('------')
 
-%duplicate route identifiers down to seasons
-for iSeason=1:1:numel(Seasons); Working.(Seasons{iSeason}).Route = Working.Route; end; clear iSeason
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% optionally, deseasonalise travel times on each route
@@ -138,7 +140,7 @@ if Settings.DeseasFlights == 1;
     for iDay=1:1:366;
       InRange = 366 + iDay+[-1,1].*0.5.*Settings.DeseasPeriod;
       DataInPeriod = find(DoY >= floor(InRange(1)) & DoY <= ceil(InRange(2)));
-      RollingAverage(iDay) = nanmean(FT(DataInPeriod));
+      RollingAverage(iDay) = mean(FT(DataInPeriod),'omitnan');
     end
 
     %finally, interpolate it to the data and remove it
@@ -148,7 +150,7 @@ if Settings.DeseasFlights == 1;
 
     %remove the seasonal variation from the signal, ADDING BACK THE ANNUAL MEAN to keep relative time stats used later sane.
     DoY = floor(date2doy(FlightData.Date(OnThisRoute)));
-    FlightData.t(OnThisRoute) = FlightData.t(OnThisRoute) - interp1(1:1:366,RollingAverage,DoY) + nanmean(RollingAverage);
+    FlightData.t(OnThisRoute) = FlightData.t(OnThisRoute) - interp1(1:1:366,RollingAverage,DoY) + mean(RollingAverage,'omitnan');
 
 
   end
@@ -175,11 +177,10 @@ for iRoute=1:1:numel(Routes)
   %%%%%%%%%%%%%%%%%%%
 
   %median over all flights
-  RouteInfo{iRoute,6} = nanmedian(FlightData.t(FlightsOnThisRoute));
+  RouteInfo{iRoute,6} = median(FlightData.t(FlightsOnThisRoute),'omitnan');
 
   %normalised individual flight times
   Working.tRel(FlightsOnThisRoute) = FlightData.t(FlightsOnThisRoute)./RouteInfo{iRoute,6};
-
 
   %by season
   %%%%%%%%%%%%%%%%%%%%%%
@@ -188,15 +189,16 @@ for iRoute=1:1:numel(Routes)
   SeasonMedians = NaN(numel(Seasons),1);
   for iSeason=1:1:numel(Seasons)
 
-    %get indices of flights on this route in this system
+    %get indices of flights on this route in this season
     InThisSeason = find(ismember(DoY(FlightsOnThisRoute),Settings.Seasons.(Seasons{iSeason})));
-    idx = FlightsOnThisRoute(InThisSeason); %this is much less typing
+    idx = FlightsOnThisRoute(InThisSeason); %'idx' is much less typing
 
     %find median flight time
-    SeasonMedians(iSeason) = nanmedian(FlightData.t(idx));
+    SeasonMedians(iSeason) = median(FlightData.t(idx),'omitnan');
 
     %normalise flight times
     Working.(Seasons{iSeason}).tRel(idx) = FlightData.t(idx)./SeasonMedians(iSeason);
+%     Working.tRel(idx) = Working.(Seasons{iSeason}).tRel(idx);
 
     %and flag as used
     Working.(Seasons{iSeason}).Used(idx) = 1;
@@ -214,9 +216,13 @@ for iSeason=1:1:numel(Seasons); Working.(Seasons{iSeason}).Used(Working.Used == 
 clear iRoute Routes FlightsOnThisRoute SeasonMedians DoY iSeason InThisSeason idx
 
 %compute an overall median flight time for the whole dataset
-OverallMedian = nanmedian(FlightData.t(Working.Used == 1));
+OverallMedian = median(FlightData.t(Working.Used == 1),'omitnan');
 disp(['Overall median flight time in retained dataset is ',num2str(OverallMedian./60),' minutes'])
+%and one for each direction
+disp('compute directional medians!!!!!!')
+
 disp('------')
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% drop any routes with:
@@ -229,21 +235,22 @@ disp('------')
 %unpopular routes
 %%%%%%%%%%%%%%%%%%%%
 
-for iSeason=1:1:numel(Seasons)
-  RtS = Working.(Seasons{iSeason}).Route; %routes this season
-  RtS(Working.(Seasons{iSeason}).Used == 0) = NaN;
-  uRtS = unique(RtS); uRtS = uRtS(~isnan(uRtS));
-
-  Sigma = 0;
-  for iRoute=1:1:numel(uRtS)
-    ThisSeasonThisRoute = find(RtS == uRtS(iRoute));
-    if numel(ThisSeasonThisRoute) < Settings.MinFlights;
-      Working.(Seasons{iSeason}).Used(ThisSeasonThisRoute) = 0;
-      Sigma = Sigma+numel(ThisSeasonThisRoute);
-    end
-  end
-  disp([num2str(Sigma),' flights dropped due to insufficiently busy routes in ',Seasons{iSeason}])
-end
+disp('add this back in')
+% % % % % % % % for iSeason=1:1:numel(Seasons)
+% % % % % % % %   RtS = Working.(Seasons{iSeason}).Route; %routes this season
+% % % % % % % %   RtS(Working.(Seasons{iSeason}).Used == 0) = NaN;
+% % % % % % % %   uRtS = unique(RtS); uRtS = uRtS(~isnan(uRtS));
+% % % % % % % % 
+% % % % % % % %   Sigma = 0;
+% % % % % % % %   for iRoute=1:1:numel(uRtS)
+% % % % % % % %     ThisSeasonThisRoute = find(RtS == uRtS(iRoute));
+% % % % % % % %     if numel(ThisSeasonThisRoute) < Settings.MinFlights;
+% % % % % % % %       Working.(Seasons{iSeason}).Used(ThisSeasonThisRoute) = 0;
+% % % % % % % %       Sigma = Sigma+numel(ThisSeasonThisRoute);
+% % % % % % % %     end
+% % % % % % % %   end
+% % % % % % % %   disp([num2str(Sigma),' flights dropped due to insufficiently busy routes in ',Seasons{iSeason}])
+% % % % % % % % end
 
 disp('------')
 
