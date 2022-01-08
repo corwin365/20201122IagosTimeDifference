@@ -15,7 +15,7 @@ clear Settings
 
 figure
 clf
-set(gcf,'color','w')
+set(gcf,'color','w','position',[680 32 1040 946])
 subplot = @(m,n,p) subtightplot (m, n, p, 0.01, 0.05, 0.2);
 
 

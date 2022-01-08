@@ -1,186 +1,356 @@
-function [] = gg_times(Paths,Settings)
-
-Indices  = Settings.Indices;
-Seasons  = Settings.Seasons;
-RTRange  = Settings.RelativeTime;
-Colours  = Settings.Colours;
-xPercent = Settings.CutOff;
+function [] = dd_routesplit_v2(Paths,Settings,Airports)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%plot time series of time taken over the instrument record
+%split the data into routes and "seasons", to facilitate later analysis
 %
+%version 2, as I was having trouble finding a bug in the original
+
 %
-%Corwin Wright, c.wright@bath.ac.uk, 2021/02/10
+%Corwin Wright, c.wright@bath.ac.uk, 2022/02/03
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% load route and data
+%% load dataset of individual flights
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%load
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%load flights
+FlightData = load([Paths.StoreDir,'/flight_data_',Paths.SourceIdentifier,'.mat'],'Flights');
+FlightData = FlightData.Flights;
 
+%load list of "seasons"
+SeasonNames = fieldnames(Settings.Seasons);
 
-
-%all flight data
-Flights = load([Paths.StoreDir,'/flight_data_',Paths.SourceIdentifier,'.mat']);
-Flights = Flights.Flights;
-
-%which flights are actually used?
-load([Paths.StoreDir,'/routes_',Paths.SourceIdentifier,'_',Paths.PPIdentifier,'.mat']);
-
-%load indices
-Index = load([Paths.StoreDir,'/indices_',Paths.SourceIdentifier,'_',Paths.PPIdentifier,'.mat']);
-FlightIndices = Index.Flight;
-clear Index
-
-%get season names, and add 'all' 
-SeasonNames = fieldnames(Seasons);
+%add 'All' to this list - this will include all data
 SeasonNames{end+1} = 'All';
+Settings.Seasons.All = 1:1:366; %i.e. all days of the year
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% split out the top and bottom x % by each index, then plot KDFs of the data
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% create a series of arrays that map onto the flights
+% and contain information we will use later
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%create struct
+Working = struct();
+
+%for each "season"...
+%%%%%%%%%%%%%%%%%%%%%%%
+for iSeason=1:1:numel(SeasonNames); 
+
+  %create flag arrays for if the flight is included in this subset
+  Working.Used.(SeasonNames{iSeason}) = true(size(FlightData.Dep));  %assume a flight is INCLUDED until removed
+
+  %create arrays for relative flight time within the season, compared to all flights on that route in that direction
+  Working.tRel.(SeasonNames{iSeason}) = NaN(size(FlightData.Dep));
+
+end; clear iSeason
+
+%and over all flights...
+%%%%%%%%%%%%%%%%%%%%%%%%
+
+%what route number is the flight on?
+Working.RouteNumber = NaN(size(FlightData.Dep));
+
+%is the flight eastward or westward?
+Working.Eastward = false(size(FlightData.Dep));
+
+%what is the eastward 'pair' of a given westward flight?
+Working.Pair = NaN(size(FlightData.Dep));
+
+%for paired flights, what is the difference between Eward and Wward flight times?
+%this is based on the ideas of 10.1038/NCLIMATE2715
+Working.PairDelta = NaN(size(FlightData.Dep));
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% discard any flights outside our overall time range
+% and divide data into 'seasons'
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%overall out-of-range
+OutOfRange = find(FlightData.Date <= Settings.TimeRange(1) ...
+                | FlightData.Date >= Settings.TimeRange(2));
+
+dd = floor(date2doy(FlightData.Date));
+for iSeason=1:1:numel(SeasonNames)
+
+  %find all dates *not* in this season
+  DaysInSeason = Settings.Seasons.(SeasonNames{iSeason});
+  OutofSeason = find(~ismember(dd,DaysInSeason));
+
+  %add on the overall out-of-range days, and flag to ignore
+  Bad = unique([OutOfRange;OutofSeason]);
+  ToFlag = Working.Used.(SeasonNames{iSeason});
+  ToFlag(Bad) = false;
+  Working.Used.(SeasonNames{iSeason}) = ToFlag;
+
+end; 
+
+disp('--------')
+disp(['Data divided into seasons; ',num2str(numel(OutOfRange)),' flights discarded as out of time range'])
+clear dd OutOfRange iSeason DaysInSeason OutofSeason Bad ToFlag
 
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% assign each flight to a route
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-for iDir=1:1:3 %1 is eastward, 2 is westward, 3 is round-trip
+%identify all unique DEP and ARR airports
+UniqueAirports = unique(cat(1,FlightData.Dep,FlightData.Arr)); 
+
+%create an array to store route metadata
+RouteInfo = cell(1,5); %The 1 will grow. The 6 will be: [RouteID,Origin,Destination,NFlights,Eastward,FlightMedians]
+
+%assign a unique number to each route
+RouteCount = 0;
+for iArr=1:1:numel(UniqueAirports)
+  for iDep=1:1:numel(UniqueAirports)
+    if iArr == iDep; continue; end
+
+    %find all flights with this ARR and DEP
+    ThisArr  = find(ismember(FlightData.Arr,UniqueAirports{iArr}));
+    ThisDep  = find(ismember(FlightData.Dep,UniqueAirports{iDep})); 
+    ThisPair = intersect(ThisArr,ThisDep); 
+    if numel(ThisPair) == 0; continue; end
+    RouteCount = RouteCount+1;    
+
+    %identify and store some route metadata
+    RouteInfo{RouteCount,1} = RouteCount;    
+    RouteInfo{RouteCount,2} = UniqueAirports{iDep};
+    RouteInfo{RouteCount,3} = UniqueAirports{iArr};
+    RouteInfo{RouteCount,4} = numel(ThisPair);
+
+    %is the flight eastward or westward?
+    if ismember(UniqueAirports{iDep},Airports.NA); 
+      RouteInfo{RouteCount,5} = true;
+    else                                           
+      RouteInfo{RouteCount,5} = false;
+    end
+
+    %mark all individual flights on this route with their route number and direction
+    Working.RouteNumber(ThisPair) = RouteCount;
+    Working.Eastward(   ThisPair) = RouteInfo{RouteCount,5};
+
+  end
+end
+clear iArr iDep  ThisArr ThisDep ThisPair UniqueAirports
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% drop insufficiently busy routes within each season
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+disp('--------')
+for iSeason=1:1:numel(SeasonNames)
+  Sigma = 0;
+
+  for iRoute=1:1:RouteCount;
+
+    %find all flights on this route in this season
+    RouteFlights = find(Working.RouteNumber                 == iRoute ...
+                      & Working.Used.(SeasonNames{iSeason}) == 1      );
+
+    %if too few flights left on this route in this season...
+    if numel(RouteFlights) < Settings.MinFlights;
+    
+      %... remove these flights from the valid dataset
+      zz = Working.Used.(SeasonNames{iSeason});
+      zz(RouteFlights) = false;
+      Working.Used.(SeasonNames{iSeason}) = zz;
+      %and increment count, for information
+      Sigma = Sigma+numel(RouteFlights);
+      
+    end
+
+  end;
+  disp(['Flights dropped due to insufficiently busy routes in ',SeasonNames{iSeason},': ',num2str(Sigma)])
 
 
-  %prepare figure
-  figure(iDir)
-  clf
-  set(gcf,'color','w')
-  k = 0;
- 
+end;
+clear iRoute iSeason zz RouteFlights Sigma
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% find the median flight time for each season-route combination, and normalise flight times to this
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
+for iRoute=1:1:RouteCount;
+  SeasonMedians = NaN(numel(SeasonNames),1);
+  for iSeason=numel(SeasonNames):-1:1 %the negative ordering is to allow certain tests - see comment below
+
+    %find all flights on this route in this season
+    RouteFlights = find(Working.RouteNumber                 == iRoute ...
+                      & Working.Used.(SeasonNames{iSeason}) == 1      );
+
+    %find the median flight time
+    SeasonMedians(iSeason) = median(FlightData.t(RouteFlights),'omitnan');
+
+    %scale all relevant flights to this
+    zz = Working.tRel.(SeasonNames{iSeason});
+    zz(RouteFlights) = FlightData.t(RouteFlights) ./ SeasonMedians(iSeason);
+    Working.tRel.(SeasonNames{iSeason}) = zz;
+    
+% %     %use this for tests where tRel seasonal and tRel all need to be the same - should be commented out otherwise
+% %     zz = Working.tRel.All;
+% %     zz(RouteFlights) = FlightData.t(RouteFlights) ./ SeasonMedians(iSeason);
+% %     Working.tRel.All = zz; 
+
+  end
+
+  %store these medians as part of the route info
+  RouteInfo{iRoute,6} = SeasonMedians;
+
+end
+clear iRoute SeasonMedians iSeason RouteFlights zz 
+
+%also find a set of representative overall medians
+for iSeason=1:1:numel(SeasonNames);
+  OverallMedians.(SeasonNames{iSeason}).East = median(FlightData.t(Working.Eastward ==  true & Working.Used.(SeasonNames{iSeason}) == true),'omitnan');
+  OverallMedians.(SeasonNames{iSeason}).West = median(FlightData.t(Working.Eastward == false & Working.Used.(SeasonNames{iSeason}) == true),'omitnan');
+  OverallMedians.(SeasonNames{iSeason}).Both = median(FlightData.t(                            Working.Used.(SeasonNames{iSeason}) == true),'omitnan');
+end
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% drop any flights outside the defined useful range
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+disp('--------')
+for iSeason=1:1:numel(SeasonNames)
+
+  Times = Working.tRel.(SeasonNames{iSeason}); 
+  Used  = Working.Used.(SeasonNames{iSeason});
+
+  Bad = find(Times < min(Settings.RelativeTime) | Times > max(Settings.RelativeTime));
+  Used(Bad) = false;
+
+  Working.Used.(SeasonNames{iSeason}) = Used;
+
+  disp(['Flights dropped as too fast or too slow in ',SeasonNames{iSeason},': ',num2str(numel(Bad))])
   
-  for iSeason=1:1:numel(SeasonNames)
+end
+clear iSeason Times Used Bad
 
-    %select flights in this season and direction
-    %also load their flight times
-
-
-    if iDir == 1;
-      ThisGroup = find(Working.InSeason.(SeasonNames{iSeason}) == 1 ...
-                     & Working.Eastward                        == true);
-      TotalFlightTime = Working.tRel.(SeasonNames{iSeason}); 
-      TotalFlightTime = TotalFlightTime(ThisGroup);
-    elseif iDir == 2;
-      ThisGroup = find(Working.InSeason.(SeasonNames{iSeason}) == 1 ...
-                     & Working.Eastward                        == false);
-      TotalFlightTime = Working.tRel.(SeasonNames{iSeason}); 
-      TotalFlightTime = TotalFlightTime(ThisGroup);
-    elseif iDir == 3;
-      ThisGroup = find(Working.InSeason.(SeasonNames{iSeason}) == 1 ...
-                     & ~isnan(Working.Pair));
-      TotalFlightTime = Working.tRel.(SeasonNames{iSeason}); 
-      TotalFlightTime = TotalFlightTime(ThisGroup)+TotalFlightTime(Working.Pair(ThisGroup));
-    end
-
-
-    %convert flight time to delay in minutes
-    OverallMedian = 500.*60
-    TotalFlightTime = TotalFlightTime.*OverallMedian;
-    if iDir == 3; TotalFlightTime = TotalFlightTime-OverallMedian.*2;
-    else          TotalFlightTime = TotalFlightTime-OverallMedian;
-    end
-    TotalFlightTime = TotalFlightTime./60;
-
-
-    for iIndex=1:1:numel(Indices)
-
-      %select index
-      Index = FlightIndices.(Indices{iIndex});
-
-      %subset to just these flights
-      Index = Index(ThisGroup);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% pair flights to produce composite round trips
+%require both members to be valid members of the 'All' season
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 
-      %pull out the relative flight times for the top and bottom x percent of each index
-      Top    = TotalFlightTime(find(Index <= prctile(Index,    xPercent)));
-      Bottom = TotalFlightTime(find(Index >= prctile(Index,100-xPercent)));
+%loop by flights. It would be more efficient to loop by routes, but easier to introduce a bug.
+for iFlight=1:1:numel(FlightData.Dep)
+
+  %require outgoing flight to be a valid member of 'All'
+  if ~Working.Used.All(iFlight); continue; end
+
+  %require outgoing flight to be westbound
+  if Working.Eastward(iFlight); continue; end
+
+  %find all flights with flipped DEP and ARR
+  OppositeRoute = find(strcmp(RouteInfo(:,3),FlightData.Dep{iFlight}) ...
+                     & strcmp(RouteInfo(:,2),FlightData.Arr{iFlight}));
+  OnOppositeRoute = find(Working.RouteNumber == OppositeRoute);
+
+  %drop out if opposite route has no flights
+  if numel(OnOppositeRoute) < 1; continue; end
+
+  %drop any opposite-route flights which are not valid mmbers of 'All'
+  OnOppositeRoute = OnOppositeRoute(Working.Used.All(OnOppositeRoute) == true);
+
+  %now, find the closest in time to the incoming flight
+  [dt,idx] = min(abs(FlightData.Date(iFlight)-FlightData.Date(OnOppositeRoute)));
+  if numel(idx) ==0; continue; end %this can happen when using a time period reduced from the full set, due to the way we select OnOppositeRoute in time
+
+  %if it's too far away in time, skip out
+  if dt > Settings.MaxDt; continue; end
+
+  %otherwise, store it as a pair
+  Working.Pair(iFlight) = OnOppositeRoute(idx);
+
+  %and store the travel-time difference between the pair
+  Working.PairDelta(iFlight) = FlightData.t(iFlight) - FlightData.t(idx);
+
+end
+clear iFlight OnOppositeRoute dt idx OppositeRoute
+disp('--------')
+disp('Flights paired')
+disp('--------')
 
 
-      %generate KDFs of the data
-      x = -80:1:80;%
-% % 
-% %       if    iDir == 3; x = 2.*min(RTRange):0.005:max(RTRange).*2;
-% %       else             x =    min(RTRange):0.005:max(RTRange);
-% %       end
-      a = pdf(fitdist(   Top,'kernel','Kernel','normal'),x); a = a./nansum(a(:));
-      b = pdf(fitdist(Bottom,'kernel','Kernel','normal'),x); b = b./nansum(b(:));
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% produce a version of 'All' which has the annual cycle removed
+% this can be optionally swapped in using the DeseasFlights flag
+% in place of the main dataset, but will always be made.
+%
+%needs tom be done separately for east and west
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-% %       %convert scale from relative times to minutes of delay
-% %       if iDir == 3;  x = x.*(2.*OverallMedian) - 2.*OverallMedian;
-% %       else           x = x.*OverallMedian - OverallMedian;
-% %       end
-% %       x = x./60;
+for iEast=1:2;
 
-      %test similarity of the two datasets
-      [h,p,kstat]= kstest2(Top,Bottom,'Alpha',0.05);      
+  if iEast == 1; EastLogical = true; else EastLogical = false; end
 
-      %find overlap region
-      c = min([a;b],[],1);
+  %first, find the day-of-year and relative flight time of each used flight
+  dd   = floor(date2doy(FlightData.Date(Working.Used.All == 1 & Working.Eastward == EastLogical)))';
+  tRel = Working.tRel.All(              Working.Used.All == 1 & Working.Eastward == EastLogical)'-1; %the -1 is to remove the overall median
 
-      %plot
-      k = k+1;
-      subplot(numel(SeasonNames),numel(Indices),k)
-      cla
-      hold on
-      for y=0:0.01:0.04; plot(minmax(x),[1,1].*y,'-','linewi',0.5,'color',[1,1,1].*0.7); end
+  %duplicate out over three years, to facilitate accurate smoothing at ends
+  dd = [dd-366,dd,dd+366];
+  tRel = [tRel,tRel,tRel];
 
-      %histograms
-      patch([x,max(x),min(x)],[a,0,0],         'r','facealpha',0.5,'edgecolor','none')
-      patch([x,max(x),min(x)],[b,0,0],         'b','facealpha',0.5,'edgecolor','none')
-      
-      %shade the common region dark grey if significant, and light grey if not
-      if h == 1; patch([x,max(x),min(x)],[c,0,0],[1,1,1].*0.7,'facealpha',1,'edgecolor','none')
-      else       patch([x,max(x),min(x)],[c,0,0],[1,1,1].*0.9,'facealpha',1,'edgecolor','none')
-      end
-
-      %mean values
-      scatter(mean(Top),0,60,[1,1,1].*0.6,'markerfacecolor','r','markerfacealpha',0.6,'marker','^')
-      scatter(mean(Bottom),0,60,[1,1,1].*0.6,'markerfacecolor','b','markerfacealpha',0.6,'marker','v')
+  %now, generate a rolling time-mean
+  TimeMean = NaN.*dd;
+  for iDay=367:1:366*2
+    InWindow = find(dd > iDay-Settings.DeseasPeriod./2 ...
+                  & dd < iDay+Settings.DeseasPeriod./2);
+    TimeMean(iDay) = mean(tRel(InWindow),'omitnan');
+  end; clear iDay tRel InWindow dd
 
 
-      %print test results
-      xpos = 55;
-      if h == 1; Label = ['\it\bf{{p=',num2str(round(p,2,'significant')),'}}'];
-      else       Label = [    '\it{p=',num2str(round(p,2,'significant')),'}' ];%\it{n/s}';
-      end
-      text(xpos,0.037,Label,                             'horizontalalignment','right','fontsize',10);
-      text(xpos,0.032,['\it{n=',num2str(numel(Top)),'}'],'horizontalalignment','right','fontsize',10);
-      
+  %and cut down to one year again
+  dd = 1:1:366;
+  TimeMean = TimeMean(367:2*366);
 
-      %tidy up panel
-      axis([minmax(x) 0 0.04])
-      grid off
-      axis manual
-      plot([1,1].*min(x),[-1,1].*999,'w-','linewi',3)
-      set(gca,'ytick',0:0.01:0.04,'yticklabel',{' ','1%','2%','3%','4%'})
-      plot([0,0],[0,4].*1e-2,'-','color',[1,1,1].*0)
+  %interpolate to the times of the original flights
+  ToRemove = interp1(dd,TimeMean,date2doy(FlightData.Date(Working.Eastward == EastLogical)));
 
-      %add a swatch of the index's signature colour
-      a = -55; b = -42; c= 0.032; d =0.038;
-      patch([a,b,b,a,a],[c,c,d,d,c],Colours.(Indices{iIndex}),'edgecolor','k','clipping','off')
+  %and produce the DS timeseries
+  Working.tRel.DS(Working.Eastward == EastLogical) = Working.tRel.All(Working.Eastward == EastLogical) - ToRemove;
+  Working.Used.DS = Working.Used.All; %this will happen twice, but is a cheap operation so fine.
 
-      if  iIndex == 1; ylabel(SeasonNames{iSeason}); end
-      if iSeason == 1; title(Indices{iIndex},'fontsize',17); end
+  %finally, store the seasonal cycle - may be independently useful
+  SeasonalCycle.Cycle(iEast,:) = TimeMean;
+  SeasonalCycle.DoY(  iEast,:) = 1:1:366;
+  SeasonalCycle.East( iEast)   = EastLogical;
+
+  clear dd TimeMean ToRemove EastLogical
+
+end; clear iEast
+Working.tRel.DS = Working.tRel.DS'; %undo earlier flip
+
+%finally, do we want to replace the primary data with this?
+if Settings.DeseasFlights == 1;
+  disp('Switching in deseasonalised data for raw')
+  Working.tRel.Raw = Working.tRel.All;
+  Working.Used.Raw = Working.Used.All;
+  Working.tRel.All = Working.tRel.DS;
+  Working.tRel = rmfield(Working.tRel,'DS');
+  Working.Used = rmfield(Working.Used,'DS');
+end
 
 
-      drawnow
-      clear Top Bottom x a b h c y idx Index Label kstat p
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% save!
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%rename 'Used' to 'InSeason' (I changed my mind at the end and don't want to go throguh to fix every case)
+Working.InSeason = Working.Used; Working = rmfield(Working,'Used');
+
+save([Paths.StoreDir,'/routes_',Paths.SourceIdentifier,'_',Paths.PPIdentifier,'.mat'], ...
+      'Working','RouteInfo','OverallMedians','SeasonalCycle')
 
 
-    end; clear iIndex   TotalFlightTime
-
-
-  end; clear iSeason
-end; clear iDir
+%and return
+return

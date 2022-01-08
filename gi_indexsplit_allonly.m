@@ -1,4 +1,4 @@
-function [] = gg_times(Paths,Settings)
+function [] = gi_indexsplit_allonly(Paths,Settings)
 
 Indices  = Settings.Indices;
 Seasons  = Settings.Seasons;
@@ -38,28 +38,23 @@ FlightIndices = Index.Flight;
 clear Index
 
 %get season names, and add 'all' 
-SeasonNames = fieldnames(Seasons);
-SeasonNames{end+1} = 'All';
+SeasonNames = {'All'};
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% split out the top and bottom x % by each index, then plot KDFs of the data
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
+%prepare figure
+figure
+clf
+set(gcf,'color','w','position',[3.8 234.2 1531.6 508])
+k = 0;
+Letters = 'abcdefghijklmnopqrstuvwxyz';
 
-for iDir=3%1:1:3 %1 is eastward, 2 is westward, 3 is round-trip
+for iDir=[1,3,2] %1 is eastward, 2 is westward, 3 is round-trip
 
-
-  %prepare figure
-  figure(iDir)
-  clf
-  set(gcf,'color','w')
-  k = 0;
- 
-
-
-  
-  for iSeason=1:1:numel(SeasonNames)
+  iSeason = 1; %there is only one, but this code was forked from the multiseason so easier to write this way!
 
     %select flights in this season and direction
     %also load their flight times
@@ -110,30 +105,22 @@ for iDir=3%1:1:3 %1 is eastward, 2 is westward, 3 is round-trip
 
 
       %generate KDFs of the data
-      x = -80:1:80;%
-% % 
-% %       if    iDir == 3; x = 2.*min(RTRange):0.005:max(RTRange).*2;
-% %       else             x =    min(RTRange):0.005:max(RTRange);
-% %       end
+      x = -60:1:60;
       a = pdf(fitdist(   Top,'kernel','Kernel','normal'),x); a = a./nansum(a(:));
       b = pdf(fitdist(Bottom,'kernel','Kernel','normal'),x); b = b./nansum(b(:));
 
 
-% %       %convert scale from relative times to minutes of delay
-% %       if iDir == 3;  x = x.*(2.*OverallMedian) - 2.*OverallMedian;
-% %       else           x = x.*OverallMedian - OverallMedian;
-% %       end
-% %       x = x./60;
 
       %test similarity of the two datasets
-      [h,p,kstat]= kstest2(Top,Bottom,'Alpha',0.05);      
+      [h,p,~]= kstest2(Top,Bottom,'Alpha',0.05);      
+%       [h,p] = ttest2(Top,Bottom); %did this as a check - results broadly similar as KS test except that some marginal cases flip from sig to non-sig or vice versa
 
       %find overlap region
       c = min([a;b],[],1);
 
       %plot
       k = k+1;
-      subplot(numel(SeasonNames),numel(Indices),k)
+      subplot(3,numel(Indices),k)
       cla
       hold on
       for y=0:0.01:0.04; plot(minmax(x),[1,1].*y,'-','linewi',0.5,'color',[1,1,1].*0.7); end
@@ -147,9 +134,15 @@ for iDir=3%1:1:3 %1 is eastward, 2 is westward, 3 is round-trip
       else       patch([x,max(x),min(x)],[c,0,0],[1,1,1].*0.9,'facealpha',1,'edgecolor','none')
       end
 
-      %mean values
-      scatter(mean(Top),0,60,[1,1,1].*0.6,'markerfacecolor','r','markerfacealpha',0.6,'marker','^')
-      scatter(mean(Bottom),0,60,[1,1,1].*0.6,'markerfacecolor','b','markerfacealpha',0.6,'marker','v')
+%       %mean values
+%       scatter(mean(   Top),0,60,[1,1,1].*0.6,'markerfacecolor','r','markerfacealpha',0.6,'marker','^')
+%       scatter(mean(Bottom),0,60,[1,1,1].*0.6,'markerfacecolor','b','markerfacealpha',0.6,'marker','v')
+
+
+      %overplot the distribution edges
+      plot(x,a,'r','linewi',0.5)
+      plot(x,b,'b','linewi',0.5)
+
 
 
       %print test results
@@ -161,28 +154,43 @@ for iDir=3%1:1:3 %1 is eastward, 2 is westward, 3 is round-trip
       text(xpos,0.032,['\it{n=',num2str(numel(Top)),'}'],'horizontalalignment','right','fontsize',10);
       
 
+      
       %tidy up panel
       axis([minmax(x) 0 0.04])
       grid off
       axis manual
-      plot([1,1].*min(x),[-1,1].*999,'w-','linewi',3)
-      set(gca,'ytick',0:0.01:0.04,'yticklabel',{' ','1%','2%','3%','4%'})
+      plot([1,1].*min(x),[-1,1].*999,'w-','linewi',3);plot([1,1].*max(x),[-1,1].*999,'w-','linewi',3)
+      if     iIndex ==             1;  set(gca,'ytick',0:0.01:0.04,'yticklabel',{' '}) 
+      elseif iIndex == numel(Indices); set(gca,'ytick',0:0.01:0.04,'yticklabel',{'0','1%','2%','3%','4%'},'yaxislocation','right')
+      else                             set(gca,'ytick',0:0.01:0.04,'yticklabel',{' '})
+      end
       plot([0,0],[0,4].*1e-2,'-','color',[1,1,1].*0)
 
+%   set(gca,'ytick',0:0.01:0.04,'yticklabel',{' ','1%','2%','3%','4%'},'yaxislocation','right')
+
       %add a swatch of the index's signature colour
-      a = -55; b = -42; c= 0.032; d =0.038;
+      a = -53; b = -38; c= 0.022; d =0.028;
       patch([a,b,b,a,a],[c,c,d,d,c],Colours.(Indices{iIndex}),'edgecolor','k','clipping','off')
 
-      if  iIndex == 1; ylabel(SeasonNames{iSeason}); end
-      if iSeason == 1; title(Indices{iIndex},'fontsize',17); end
+      %label the panel
+      text(-55,0.035,['(',Letters(k),')'],'fontsize',15,'horizontalalignment','left','verticalalignment','middle')
+
+      if  iIndex == 1; 
+        if     iDir == 1; DirName = 'Eastwards';
+        elseif iDir == 2; DirName = 'Westwards';
+        elseif iDir == 3; DirName = 'Round Trip';
+        end
+        ylabel(DirName,'fontsize',20);
+      end
+      if iDir == 1; title(Indices{iIndex},'fontsize',20); end
+      if iDir == 2; xlabel('Delay [minutes]'); end
 
 
       drawnow
-      clear Top Bottom x a b h c y idx Index Label kstat p
+      clear Top Bottom x a b h c y idx Index Label kstat p DirName
 
 
     end; clear iIndex   TotalFlightTime
 
 
-  end; clear iSeason
 end; clear iDir

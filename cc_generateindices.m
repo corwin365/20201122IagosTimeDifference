@@ -74,6 +74,7 @@ for iIndex=1:1:numel(Indices)
     case 'TSI'
       TSI = load([Root,'/tsi.mat']);
       TSI.TSI(TSI.TSI < 1358) = NaN; %very noisy - remove an extreme outlier
+      TSI.TSI = inpaint_nans(TSI.TSI); %fill the new gap
       TSI.TSI = smoothn(TSI.TSI,[31,1]);%very noisy - smooth to make it fair
       a = interp1(TSI.Time,TSI.TSI,TimeScale.Flights);
       b = interp1(TSI.Time,TSI.TSI,TimeScale.Daily); 

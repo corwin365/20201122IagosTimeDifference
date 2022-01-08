@@ -1,4 +1,4 @@
-function [] = kk_timetaken(Paths,DeSeas)
+function [] = ff_timetaken(Paths,DeSeas)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -49,12 +49,15 @@ for iEW=0:1
                                        ones(size(ThisGroup)), ...
                                        TimeScale,'@nansum');
   end
-end
 
-%scale delays by overall median flight time
-OverallMedian = 500 %temporary
-Store = (Store.*OverallMedian) - OverallMedian;
-% Store = Store./60; %minutes
+  %scale delays by overall median flight time
+  if     iEW == 0; OM = OverallMedians.All.West; 
+  elseif iEW == 1; OM = OverallMedians.All.East;
+  end
+
+  Store(:,:,iEW+1) = (Store(:,:,iEW+1).*OM) -OM;
+end
+Store = Store./60; %seconds -> minutes
 
 
 %scale N flights to produce sensible point sizes
@@ -80,7 +83,7 @@ for iEW=1:2;
   
   %make panel
   subplot(2,1,iEW)
-  axis([datenum([1994,2020],1,1),min(flatten(Store(:,:,iEW))).*1.4, max(flatten(Store(:,:,iEW))).*1.1])
+  axis([datenum([1994,2020],1,1),min(flatten(Store(:,:,iEW))), max(flatten(Store(:,:,iEW)))])
   axis manual
   hold on
 %   plot([0,1].*99e99,[0,0],'k-')  

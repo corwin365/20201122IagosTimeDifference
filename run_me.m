@@ -14,7 +14,7 @@ clear all
 %all paths and arbitrary choices made in the analysis are set here
 %these are the bits you want to change!
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%5%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 %%%%%%%%%5%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -29,14 +29,20 @@ clear all
 
 MainSettings.Run = [0, ...  %aa: generate airport geolocation dataset. Doesn't usually need to be run, and output is handled manually and set in the MainSettings.Airports variables below
                     0, ...  %bb: prep flight and airport data. This is the main data prep routine, but always acts on all the data in Paths.AeolusData - i.e. it only needs rerunning if data is added or removed.
-                    0, ...  %cc: prepare climate indices, on the same timescale as the flight data from bb
-                    0, ...  %cd: choose which indices will be used raw and which deseasonalised in later analyses
-                    0, ...  %dd: split data into routes, normalise flight times, and generate paired routes
+                    1, ...  %cc: prepare climate indices, on the same timescale as the flight data from bb
+                    1, ...  %cd: choose which indices will be used raw and which deseasonalised in later analyses
+                    1, ...  %dd: split data into routes, normalise flight times, and generate paired routes
+           ...% COMMON PREP BEFORE THIS LINE, INDIVIDUAL ANALYSES AFTER %...
                     0, ...  %ee: plot time series of planes used and climate indices
                     0, ...  %ff: plot time taken as a function of time and plane
                     0, ...  %gg: index-split KDFs
-                    0, ...  %hh: index-split summary stats
-                    0];     
+                    0, ...  %gh: index-split summary stats
+                    0, ...  %gi: as gg, but only for one all data and on one page
+                    0, ...  %hh: assess encountered u,V and T against climate indices
+                    0, ...  %ii: regression analysis
+           ...% HADCRUT-ONLY ANALYSES FOR POSSIBLE PAPER ONLY AFTER THIS LINE %...
+                    1, .... %clim_aa: regression analyses carried out for different periods selected by Phoebe
+                    0];     %unused
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -54,7 +60,7 @@ Paths.SourceIdentifier = 'all';
 
 %define a unique identifier to be applied to all postprocessed data (e.g. subsetted data for a particular time period)
 %this will be used to SAVE data in routines dd and ee, and to LOAD data in later routines
-Paths.PPIdentifier = 'aaa'; 
+Paths.PPIdentifier = 'climateonly'; 
 
       
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                             
@@ -75,8 +81,8 @@ MainSettings.Filtering.MinFlights = 10;
 MainSettings.Filtering.RelativeTime = [0.87,1.15]; %.87 is 15% less than 1
 
 %deseasonalise flights?
-MainSettings.Filtering.DeSeasFlights = 0; %0 no, 1 yes
-MainSettings.Filtering.DeSeasPeriod  = 93; %if yes above, how many days should we use as a seasonal averaging window? This will be rounded UP to give whole days at each end of the window
+MainSettings.Filtering.DeSeasFlights = 1; %0 no, 1 yes
+MainSettings.Filtering.DeSeasPeriod  = 61; %if yes above, how many days should we use as a seasonal averaging window? This will be rounded UP to give whole days at each end of the window
 
 %what is the maximum time difference between two flights paired as a return?
 MainSettings.Filtering.MaxDt =2; %days
@@ -104,7 +110,8 @@ MainSettings.TimeRange= [datenum(1994,8,3),datenum(2019,12,31)];
 %these don't have to be actual seasons - they could be any arbitrary set of days-of-year, and can overlap
 %the programme will use the names of the sub-structures as the "season" names
 %
-%reserved names not to be used: All','tRel','Route','Used','Seasons', 'Indices' (used as variables inside same structs later)
+%reserved names not to be used: All','tRel','Route','Used','Seasons', 'Indices', 'DS'
+%(all used as variables inside same structs later)
 MainSettings.Seasons.DJF = date2doy(datenum(2000,12,1):datenum(2001, 3,1)-1);
 MainSettings.Seasons.MAM = date2doy(datenum(2000, 3,1):datenum(2000, 6,1)-1);
 MainSettings.Seasons.JJA = date2doy(datenum(2000, 6,1):datenum(2000, 9,1)-1);
@@ -113,14 +120,14 @@ MainSettings.Seasons.SON = date2doy(datenum(2000, 9,1):datenum(2000,12,1)-1);
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                 
-%other settings
+%other settings- general
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 %what climate indices to use?
 %data will be plotted and multilinear regressed about these
 %all will be normalised to a range of -1 to 1 (except HadCRUT)
-MainSettings.Indices = {'ENSO','HadCRUT','NAO','QBO','SeaIce','TSI'}; %NAM, Fuel
+MainSettings.Indices = {'HadCRUT'}; %NAM, Fuel,'ENSO','NAO','QBO','SeaIce','TSI'
 
 %what range should we normalise the indices over? (percentiles)
 MainSettings.IndexRange = [0,100];
@@ -129,7 +136,7 @@ MainSettings.IndexRange = [0,100];
 MainSettings.DSSmooth = 61; %days - must be an odd positive integer
 
 %and which indices should be use deseasonalised, as opposed to raw?
-MainSettings.DSIndices = {'SeaIce'};
+MainSettings.DSIndices = {};%{'SeaIce'};
 
 %what colours should we assign the indices in figures?
 MainSettings.IndexColours.ENSO    = [ 57,159,228]./255;
@@ -143,7 +150,26 @@ MainSettings.IndexColours.TSI     = [255,209,107]./255;
 
 
 %what percentiles should we use to divide the top and bottom % of data from the main distribution?
-MainSettings.HistoCutoff = 10;
+MainSettings.HistoCutoff = 15;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                 
+%other settings- HadCRUT-only analyses
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%periods of time Phoebe identified as being independent in time and HadCRUT
+MainSettings.HC.Periods = [1995,2006;1998,2009;1997,2010;1998,2010;1999,2010;1998,2011;2000,2011; ...
+                           1998,2012;2000,2012;2001,2012;2000,2013;2001,2013;2002,2013;2000,2014; ...
+                           2001,2014;2002,2014;2003,2014;2001,2015;2002,2015;2003,2015;2003,2016;];
+
+
+%indices. Just one...
+MainSettings.HC.Indices = {'HadCRUT'};
+
+%seasons. Copy from above
+MainSettings.HC.Seasons = MainSettings.Seasons;
+
+%what statistical significance threshold should we use?
+MainSettings.HC.SigThresh = 0.05; 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                    
 %airports to include. Those with too few flights will be discarded later.
@@ -307,7 +333,7 @@ if MainSettings.Run(8) == 1;
 else; disp('x-x-x-x-x-> Plotting split-index KDFs  SKIPPED'); end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% FF. plot time taken as a function of time and plane
+%% GH. plot time taken as a function of time and plane
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if MainSettings.Run(9) == 1;                        
@@ -320,3 +346,57 @@ if MainSettings.Run(9) == 1;
   gh_indexsplitsummary(Paths,Settings);             %call routine
   clearvars -except MainSettings Paths Airports      %tidy up
 else; disp('x-x-x-x-x-> Plotting split-index summary SKIPPED'); end
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% GI. as GG, but only for 'All' season and on one page
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+if MainSettings.Run(10) == 1;                        
+  disp('----------> Plotting split-index KDFs ')  %notification
+  Settings.Indices      = MainSettings.Indices;
+  Settings.Seasons      = MainSettings.Seasons;
+  Settings.RelativeTime = MainSettings.Filtering.RelativeTime;
+  Settings.Colours      = MainSettings.IndexColours; 
+  Settings.CutOff       = MainSettings.HistoCutoff;
+  gi_indexsplit_allonly(Paths,Settings);                 %call routine
+  clearvars -except MainSettings Paths Airports  %tidy up
+else; disp('x-x-x-x-x-> Plotting split-index KDFs  SKIPPED'); end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% HH. geophysical properties encountered by flights
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+if MainSettings.Run(11) == 1;                        
+  disp('----------> Plotting u,v,T plots')  %notification
+  Settings.Seasons      = MainSettings.Seasons;
+  Settings.CutOff       = MainSettings.HistoCutoff;
+  Settings.Indices      = MainSettings.Indices;
+  hh_uvT(Paths,Settings);             %call routine
+  clearvars -except MainSettings Paths Airports      %tidy up
+else; disp('x-x-x-x-x-> Plotting u,v,T plots SKIPPED'); end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% II. flight time regression analysis
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+if MainSettings.Run(12) == 1;                        
+  disp('----------> Doing and plotting regression analysis ')  %notification
+  Settings.Indices      = MainSettings.Indices;
+  Settings.Seasons      = MainSettings.Seasons;
+  Settings.Colours      = MainSettings.IndexColours; 
+  ii_regression(Paths,Settings);                 %call routine
+  clearvars -except MainSettings Paths Airports  %tidy up
+else; disp('x-x-x-x-x-> Regression analysis  SKIPPED'); end
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% CLIM AA. regression analysis split out by hadcrut/time independent periods
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+if MainSettings.Run(13) == 1;                        
+  disp('----------> CLIM: Doing and plotting split-period analysis ')  %notification
+  Settings = MainSettings.HC;
+  clim_aa(Paths,Settings);                 %call routine
+  clearvars -except MainSettings Paths Airports  %tidy up
+else; disp('x-x-x-x-x-> CLIM: Doing and plotting split-period analysis  SKIPPED'); end
