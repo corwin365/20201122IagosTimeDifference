@@ -52,7 +52,7 @@ for iIndex=1:1:numel(Indices)
     case 'HadCRUT'
       HadCRUT = rCDF([Root,'/HadCRUT.5.0.1.0.analysis.anomalies.ensemble_mean.nc']);
       HadCRUT.MatlabTime = datenum(1850,1,HadCRUT.time);
-      HadCRUT.NH = squeeze(nanmean(HadCRUT.tas_mean(:,HadCRUT.latitude > 0,:),[1,2]));
+      HadCRUT.NH = squeeze(mean(HadCRUT.tas_mean(:,HadCRUT.latitude > 0,:),[1,2],'omitnan'));
       a = interp1(HadCRUT.MatlabTime,HadCRUT.NH,TimeScale.Flights);
       b = interp1(HadCRUT.MatlabTime,HadCRUT.NH,TimeScale.Daily); 
       clear HadCRUT
@@ -66,11 +66,7 @@ for iIndex=1:1:numel(Indices)
       a = interp1(NAO.Time,NAO.NAO,TimeScale.Flights);
       b = interp1(NAO.Time,NAO.NAO,TimeScale.Daily); 
       clear NAO      
-    case 'NAO'
-      NAO = load([Root,'/nao.mat']);
-      a = interp1(NAO.Date,NAO.NAO,TimeScale.Flights);
-      b = interp1(NAO.Date,NAO.NAO,TimeScale.Daily); 
-      clear NAO      
+   
     case 'TSI'
       TSI = load([Root,'/tsi.mat']);
       TSI.TSI(TSI.TSI < 1358) = NaN; %very noisy - remove an extreme outlier
@@ -88,6 +84,11 @@ for iIndex=1:1:numel(Indices)
       a = interp1(t,SeaIce(:,4),TimeScale.Flights);
       b = interp1(t,SeaIce(:,4),TimeScale.Daily); 
       clear SeaIce t
+    case 'AMO'
+      AMO = load([Root,'/AMO.mat']);
+      a = interp1(AMO.Time,AMO.AMO,TimeScale.Flights);
+      b = interp1(AMO.Time,AMO.AMO,TimeScale.Daily); 
+      clear AMO
     otherwise
       disp(['Index ',Settings.Indices{iIndex},' not specified; stopping'])
       stop
@@ -126,7 +127,7 @@ for iIndex=1:1:numel(Indices);
   %find day-of-yearly averages
   DV = NaN(366,1);
   for iDay=1:1:366;
-    DV(iDay) = nanmean(a(dd == iDay));
+    DV(iDay) = mean(a(dd == iDay),'omitnan');
   end; clear iDay
 
   %smooth a bit in time
@@ -147,8 +148,6 @@ for iIndex=1:1:numel(Indices);
 
 
 end; clear iIndex a b DV dd dd_f
-
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% tidy variable space

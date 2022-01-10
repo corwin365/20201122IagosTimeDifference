@@ -17,7 +17,7 @@ clear all
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-%%%%%%%%%5%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %which parts to run?
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -29,9 +29,9 @@ clear all
 
 MainSettings.Run = [0, ...  %aa: generate airport geolocation dataset. Doesn't usually need to be run, and output is handled manually and set in the MainSettings.Airports variables below
                     0, ...  %bb: prep flight and airport data. This is the main data prep routine, but always acts on all the data in Paths.AeolusData - i.e. it only needs rerunning if data is added or removed.
-                    1, ...  %cc: prepare climate indices, on the same timescale as the flight data from bb
-                    1, ...  %cd: choose which indices will be used raw and which deseasonalised in later analyses
-                    1, ...  %dd: split data into routes, normalise flight times, and generate paired routes
+                    0, ...  %cc: prepare climate indices, on the same timescale as the flight data from bb
+                    0, ...  %cd: choose which indices will be used raw and which deseasonalised in later analyses
+                    0, ...  %dd: split data into routes, normalise flight times, and generate paired routes
            ...% COMMON PREP BEFORE THIS LINE, INDIVIDUAL ANALYSES AFTER %...
                     0, ...  %ee: plot time series of planes used and climate indices
                     0, ...  %ff: plot time taken as a function of time and plane
@@ -41,7 +41,10 @@ MainSettings.Run = [0, ...  %aa: generate airport geolocation dataset. Doesn't u
                     0, ...  %hh: assess encountered u,V and T against climate indices
                     0, ...  %ii: regression analysis
            ...% HADCRUT-ONLY ANALYSES FOR POSSIBLE PAPER ONLY AFTER THIS LINE %...
-                    1, .... %clim_aa: regression analyses carried out for different periods selected by Phoebe
+                    0, ...  %clim_aa: regression analyses carried out for different periods selected by Phoebe
+                    0, ...  %clim_bb: as gg, but for climate only
+                    1, ...  %clim_cc: maps of the routes taken
+                    0, ...  %clim_dd: spatially correlate HadCRUT and ERA5 u with flight time record
                     0];     %unused
 
 
@@ -56,11 +59,11 @@ Paths.StoreDir   = ['./data'];                          %storage directory for w
 
 %define a unique identifier for all source data (i.e. airport metadata, stored flights, and stored climate indices)
 %this will be used to SAVE data in routines aa, bb and cc, and to LOAD data in later routines
-Paths.SourceIdentifier = 'all'; 
+Paths.SourceIdentifier = 'hires';%'all'; 
 
 %define a unique identifier to be applied to all postprocessed data (e.g. subsetted data for a particular time period)
 %this will be used to SAVE data in routines dd and ee, and to LOAD data in later routines
-Paths.PPIdentifier = 'climateonly'; 
+Paths.PPIdentifier = 'alpha'; 
 
       
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                             
@@ -92,7 +95,7 @@ MainSettings.Filtering.MaxDt =2; %days
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %time spacing of downsampled full routes, used to generate maps
-MainSettings.Maps.ResampleTime = 5; %minutes
+MainSettings.Maps.ResampleTime = 1; %minutes
 
 %mesh for geographic maps and u/v/T averaging
 MainSettings.Maps.Lon = -100:1:25;
@@ -127,7 +130,9 @@ MainSettings.Seasons.SON = date2doy(datenum(2000, 9,1):datenum(2000,12,1)-1);
 %what climate indices to use?
 %data will be plotted and multilinear regressed about these
 %all will be normalised to a range of -1 to 1 (except HadCRUT)
-MainSettings.Indices = {'HadCRUT'}; %NAM, Fuel,'ENSO','NAO','QBO','SeaIce','TSI'
+%current options: 'AMO','ENSO','Fuel','HadCRUT','NAM', 'NAO','QBO','SeaIce','TSI',
+% MainSettings.Indices = {'HadCRUT'}; 
+MainSettings.Indices = {'AMO','ENSO','NAO','QBO','SeaIce','TSI'};
 
 %what range should we normalise the indices over? (percentiles)
 MainSettings.IndexRange = [0,100];
@@ -135,10 +140,14 @@ MainSettings.IndexRange = [0,100];
 %how far should we smooth "background" data for index deseasonalisation?
 MainSettings.DSSmooth = 61; %days - must be an odd positive integer
 
-%and which indices should be use deseasonalised, as opposed to raw?
-MainSettings.DSIndices = {};%{'SeaIce'};
+%which indices should be use deseasonalised, as opposed to raw?
+MainSettings.DSIndices = {'SeaIce'};
+
+%which indices should be delinearised?
+MainSettings.DLIndices = {'SeaIce'};
 
 %what colours should we assign the indices in figures?
+MainSettings.IndexColours.AMO     = [255,178,102]./255;
 MainSettings.IndexColours.ENSO    = [ 57,159,228]./255;
 MainSettings.IndexColours.Fuel    = [  0,  0,  0]./255;
 MainSettings.IndexColours.HadCRUT = [196, 66, 79]./255;
@@ -170,6 +179,9 @@ MainSettings.HC.Seasons = MainSettings.Seasons;
 
 %what statistical significance threshold should we use?
 MainSettings.HC.SigThresh = 0.05; 
+
+%where should we split histograms?
+MainSettings.HC.CutOff = 20; %percent of data
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                    
 %airports to include. Those with too few flights will be discarded later.
@@ -260,12 +272,13 @@ else; disp('x-x-x-x-x-> Preparing climate indices SKIPPED'); end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if MainSettings.Run(4) == 1;                        
-  disp('----------> Choosing index time subsetting')  %notification
+  disp('----------> Choosing index time subsetting and delinearising')  %notification
   Settings.Indices  = MainSettings.Indices;
   Settings.ChosenDS = MainSettings.DSIndices;
+  Settings.ChosenDL = MainSettings.DLIndices;
   cd_chooseindices(Paths,Settings)         %call routine
   clearvars -except MainSettings Paths Airports                      %tidy up
-else; disp('x-x-x-x-x-> Choosing index time subsetting SKIPPED'); end
+else; disp('x-x-x-x-x-> Choosing index time subsetting and delinearising SKIPPED'); end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -298,8 +311,9 @@ end
 
 if MainSettings.Run(6) == 1;                        
   disp('----------> Plotting time series of planes and indices')  %notification
-  Settings.Indices = MainSettings.Indices;
-  Settings.Colours = MainSettings.IndexColours;
+  Settings.Indices   = MainSettings.Indices;
+  Settings.Colours   = MainSettings.IndexColours;
+  Settings.DLIndices = MainSettings.DLIndices;
   ee_planes_and_indices(Paths,Settings)                %call routine
   clearvars -except MainSettings Paths Airports                    %tidy up
 else; disp('x-x-x-x-x-> Plotting time series of planes and indices SKIPPED'); end
@@ -400,3 +414,36 @@ if MainSettings.Run(13) == 1;
   clim_aa(Paths,Settings);                 %call routine
   clearvars -except MainSettings Paths Airports  %tidy up
 else; disp('x-x-x-x-x-> CLIM: Doing and plotting split-period analysis  SKIPPED'); end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% CLIM BB. as GG, but for climate only
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+if MainSettings.Run(14) == 1;                        
+  disp('----------> CLIM: Plotting split-index histograms ')  %notification
+  Settings = MainSettings.HC;
+  clim_bb(Paths,Settings);                 %call routine
+  clearvars -except MainSettings Paths Airports  %tidy up
+else; disp('x-x-x-x-x-> CLIM: Doing and plotting split-period analysis  SKIPPED'); end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% CLIM CC. route maps of the data used
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+if MainSettings.Run(15) == 1;                        
+  disp('----------> CLIM: Plotting route maps ')  %notification
+  Settings = MainSettings.HC;
+  clim_cc(Paths,Settings);                 %call routine
+  clearvars -except MainSettings Paths Airports  %tidy up
+else; disp('x-x-x-x-x-> CLIM: Plotting route maps SKIPPED'); end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% CLIM DD. spatial correlations between HadCRUT/ERA5 and flight time record
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+if MainSettings.Run(16) == 1;                        
+  disp('----------> CLIM: Computing spatial correlations ')  %notification
+  Settings = MainSettings.HC;
+  clim_dd(Paths,Settings);                 %call routine
+  clearvars -except MainSettings Paths Airports  %tidy up
+else; disp('x-x-x-x-x-> CLIM: Computing spatial correlations SKIPPED'); end

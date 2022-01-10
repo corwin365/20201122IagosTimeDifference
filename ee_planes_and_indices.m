@@ -11,6 +11,7 @@ function [] = jj_planes_and_indices(Paths,Settings)
 
 IndicesToPlot = Settings.Indices;
 ColoursForIndices = Settings.Colours; 
+DLIndices = Settings.DLIndices;
 clear Settings
 
 figure
@@ -35,7 +36,9 @@ load([Paths.StoreDir,'/routes_',Paths.SourceIdentifier,'_',Paths.PPIdentifier,'.
 Indices = load([Paths.StoreDir,'/indices_',Paths.SourceIdentifier,'_',Paths.PPIdentifier,'.mat']);
 Indices.Daily.Ranges = Indices.Ranges;
 Indices.Daily.WiW = Indices.WhichIsWhich;
+Indices.Daily.NewBounds = Indices.NewBounds;
 Indices = Indices.Daily;
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %subset data
@@ -150,10 +153,13 @@ for iIndex=1:1:numel(IndicesToPlot)
 
 
   %label with original range
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-  %get values
-  OR = Indices.Ranges.(IndicesToPlot{iIndex});
+  %get values. depends on if delinearised or not
+  if isfield(Indices.NewBounds,IndicesToPlot{iIndex}); OR = Indices.NewBounds.(IndicesToPlot{iIndex})
+  else                                                 OR = Indices.Ranges.(IndicesToPlot{iIndex}); end
+
+  %and print
   RoundDP = 2;
   if strcmp(IndicesToPlot{iIndex},'Time') ~= 1;
     text(Scale(end)+180,-1,num2str(round(   OR(1),RoundDP)),'fontsize',9);
@@ -165,10 +171,10 @@ for iIndex=1:1:numel(IndicesToPlot)
     text(Scale(end)+180, 1,datestr(max( OR),'mm/yyyy'),'fontsize',9);
   end
 
-  %mark if raw or deseasonalised
+  %mark if deseasonalised or delinearised
   Which = Indices.WiW.(IndicesToPlot{iIndex});
-  if strcmp(Which,'DS'); text(Scale(5),-0.8,'DS','color','w','fontsize',10); end
-
+  if strcmp(Which,'DS');                             text(Scale(5),-0.8,'DS','color','w','fontsize',10); end
+  if sum(contains(DLIndices,IndicesToPlot{iIndex})); text(Scale(5), 0.8,'DL','color','w','fontsize',10); end
 
   %tidy up
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%

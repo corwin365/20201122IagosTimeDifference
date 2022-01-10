@@ -169,10 +169,10 @@ clear ScaleFactor
 %prepare figure
 % figure
 clf
-set(gcf,'color','w','position',[83 32 1810 964])
+% set(gcf,'color','w','position',[83 32 1810 964])
 subplot = @(m,n,p) subtightplot (m, n, p, [0.02,0.03], 0.05, 0.1);
 k = 0;
-
+Letters = 'abcdefghijklmnopqrstuvwxyz';
 
 for iSeason=1:1:numel(SeasonNames);
   for iDir=[1,3,2];
@@ -192,7 +192,7 @@ for iSeason=1:1:numel(SeasonNames);
     %plot some horizontal grid lines
     for iY=-100:5:100; plot([-1,1].*999,[1,1].*iY,'color',[1,1,1].*0.8,'linewi',0.5); end; clear iY
 
-    %plot the all-date values as a background patch
+    %plot the all-data values as a background patch
     a = -999; b = 999;
     Colour = [255, 165, 0]./255;
     patch([a b b a a],Est(end)+[-1,-1,1,1,-1].*SE(end).*2,Colour,'edgecolor','none','facealpha',0.3)    
@@ -200,6 +200,7 @@ for iSeason=1:1:numel(SeasonNames);
     %and a line
     plot([a,b],[1,1].*Est(end),'color','r')
     clear a b
+
 
     for iPeriod=1:1:size(SubPeriods,1)
 
@@ -251,15 +252,41 @@ for iSeason=1:1:numel(SeasonNames);
       switch iDir; case 1; Title = 'Eastwards'; case 2; Title = 'Westwards'; case 3; Title = 'Round Trip'; end;
       title(Title,'fontsize',25)
     end; clear Title
-  
-
 
     %draw my own axes
     xlims = get(gca,'xlim'); ylims = get(gca,'ylim');
     plot(xlims,[1,1].*min(ylims),'w','linewi',2)
     set(gca,'xtick',[]);
     plot([1,1].*max(xlims),ylims,'k'); 
-    plot([1,1].*min(xlims),ylims,'k')
+    plot([1,1].*min(xlims),ylims,'k')    
+
+    %annotations
+
+
+
+    if k ~= 6;
+      text(min(xlims)+0.01.*range(xlims), ...
+           max(ylims)-0.01.*range(ylims), ...
+           ['(',Letters(k),')'], 'color','b',...
+           'horizontalalignment','left','verticalalignment','top')
+      text(max(xlims)-0.01.*range(xlims), ...
+           min(ylims)-0.01.*range(ylims), ...
+           ['\it{',SeasonNames{iSeason},'}'], 'color','b',...
+           'horizontalalignment','right','verticalalignment','bottom')      
+    else
+      text(min(xlims)+0.01.*range(xlims), ...
+           min(ylims)+0.01.*range(ylims), ...
+           ['(',Letters(k),')'], 'color','b',...
+           'horizontalalignment','left','verticalalignment','bottom') 
+      text(max(xlims)-0.01.*range(xlims), ...
+           max(ylims)-0.01.*range(ylims), ...
+           ['\it{',SeasonNames{iSeason},'}'], 'color','b',...
+           'horizontalalignment','right','verticalalignment','top')      
+    end
+  
+
+
+
 
 
 

@@ -154,7 +154,7 @@ for iSeason=1:1:numel(SeasonNames)
 
       %is it statistically significant?
       Sig   = Reg.P(iDir,iSeason,iIndex);
-      if Sig < 0.05; Colour = Colours.(Settings.Indices{iIndex}); else Colour = 'w'; end
+      if Sig < 0.1; Colour = Colours.(Settings.Indices{iIndex}); else Colour = 'w'; end
 
       %indicate coefficient standard error
       StErr = Value + [-1,1]  .* Reg.SE(iDir,iSeason,iIndex);
