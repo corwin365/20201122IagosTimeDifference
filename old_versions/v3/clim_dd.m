@@ -152,7 +152,7 @@ k = 0;
 ColourMap = flipud(cbrewer('div','RdYlBu',15)); 
 
 
-for iDir=[2,3,1]
+for iDir=[1,3,2] %eastward,round trip, westward
   for iSeason=1:1:numel(SeasonNames)
 
     %prepare panel
@@ -183,7 +183,7 @@ for iDir=[2,3,1]
 
 
     %contextual additions
-    if iDir == 2; title(SeasonNames{iSeason},'fontsize',24); end
+    if iDir == 1; title(SeasonNames{iSeason},'fontsize',24); end
 
     if iDir == 2 && iSeason == 1
       cb = colorbar('westoutside','position',[0.93 0.1 0.015 0.3]);
@@ -198,4 +198,3 @@ for iDir=[2,3,1]
   end
 end
 
-stop

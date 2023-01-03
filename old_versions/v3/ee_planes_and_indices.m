@@ -1,4 +1,4 @@
-function [] = jj_planes_and_indices(Paths,Settings)
+function [] = ee_planes_and_indices(Paths,Settings)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -12,6 +12,8 @@ function [] = jj_planes_and_indices(Paths,Settings)
 IndicesToPlot = Settings.Indices;
 ColoursForIndices = Settings.Colours; 
 DLIndices = Settings.DLIndices;
+DoNotSmooth = Settings.DoNotSmooth;
+SmoothPeriod = Settings.IndexSmooth;
 clear Settings
 
 figure
@@ -175,6 +177,13 @@ for iIndex=1:1:numel(IndicesToPlot)
   Which = Indices.WiW.(IndicesToPlot{iIndex});
   if strcmp(Which,'DS');                             text(Scale(5),-0.8,'DS','color','w','fontsize',10); end
   if sum(contains(DLIndices,IndicesToPlot{iIndex})); text(Scale(5), 0.8,'DL','color','w','fontsize',10); end
+
+  %indicate any smoothing
+  if ~contains(IndicesToPlot{iIndex},DoNotSmooth) == 1; 
+    text(Scale(end)-10,-1.08,['Smoothed ',num2str(SmoothPeriod),' days'], ...
+        'horizontalalignment','right','verticalalignment','bottom','color','w','fontsize',10);
+  end
+
 
   %tidy up
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%

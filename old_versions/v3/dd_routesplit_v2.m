@@ -342,6 +342,33 @@ end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% delinearise flight times?
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+if Settings.DelineariseFlights == 1;
+
+  disp('Delinearising flight times')
+  for iSeason=1:1:numel(SeasonNames)
+    for iDir=0:1
+
+      x = FlightData.Date;
+      y = Working.tRel.(SeasonNames{iSeason});
+      Good = find(~isnan(x+y));
+      p = polyfit(x(Good),y(Good),1);
+      pv = polyval(p,x)-1;
+      Working.tRel.(SeasonNames{iSeason}) = y-pv;
+      
+
+    end; 
+  end; 
+  clear iSeason iDir x y Good p pv
+
+end
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% save!
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

@@ -21,7 +21,7 @@ Flights = wildcardsearch(Paths.AeolusData ,'*.nc');
 Codes  = {};
 Coords = {};
 
-textprogressbar('Studying flights ')
+textprogressbar('Identifying unique airport codes in IAGOS dataset ')
 for iFile=1:1:numel(Flights)
   try
   %get data
@@ -38,11 +38,10 @@ for iFile=1:1:numel(Flights)
       Dep = MetaData(iField).Value;
     elseif strcmp(MetaData(iField).Name,'arrival_airport')
       Arr = MetaData(iField).Value;
-    elseif strcmp(MetaData(iField).Name,'departure_coord')
-      Coords{end+1} = MetaData(iField).Value;      
-    elseif strcmp(MetaData(iField).Name,'arrival_coord')
-      Coords{end+1} = MetaData(iField).Value;
-      
+% %     elseif strcmp(MetaData(iField).Name,'departure_coord')
+% %       Coords{end+1} = MetaData(iField).Value;      
+% %     elseif strcmp(MetaData(iField).Name,'arrival_coord')
+% %       Coords{end+1} = MetaData(iField).Value;  
     end
 
   end
@@ -62,16 +61,17 @@ for iFile=1:1:numel(Flights)
 end
 textprogressbar(100);textprogressbar('!')
 
+
 %reduce to unique set
 [Codes,ia] = unique(Codes);
-Coords = Coords(ia);
+% Coords = Coords(ia);
 
 clearvars -except Codes Coords Paths
-disp('Unique airport codes identified and geolocated')
+disp('Unique airport codes in IAGOS data identified')
 
 
 %save
-save([Paths.StoreDir,'/airport_codes_',Paths.SourceIdentifier,'.mat'],'Codes','Coords')
+save([Paths.StoreDir,'/airport_codes_iagos.mat'],'Codes')
 
 %and return
 return

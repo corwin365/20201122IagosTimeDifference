@@ -1,4 +1,4 @@
-function [] = ff_timetaken(Paths,DeSeas)
+function [] = ff_timetaken(Paths,DeSeas,DeLin)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -95,11 +95,12 @@ for iEW=1:2;
   
   
   %linear trend across all data
-  a = nanmean(Data,1);
-  Good = find(~isnan(a));
-  p = polyfit(TimeScale(Good),a(Good),1);
-  plot(TimeScale,polyval(p,TimeScale),'k-','linewi',2)
-
+  if DeLin ~= 1;
+    a = nanmean(Data,1);
+    Good = find(~isnan(a));
+    p = polyfit(TimeScale(Good),a(Good),1);
+    plot(TimeScale,polyval(p,TimeScale),'k-','linewi',2)
+  end
 
 
 
@@ -162,7 +163,10 @@ for iEW=1:2;
     text(min(xvals)+0.02.*range(xvals),min(yvals)+0.06.*range(yvals), ...
          'deseasonalised','horizontalalignment','left','fontsize',10)
   end
-
+  if DeLin == 1;
+    text(min(xvals)+0.02.*range(xvals),min(yvals)+0.12.*range(yvals), ...
+         'delinearised','horizontalalignment','left','fontsize',10)
+  end
 
   %tidy up
   datetick('keeplimits')
@@ -171,7 +175,7 @@ for iEW=1:2;
   set(gca,'xtick',datenum(1995:3:2020,1,1),'xticklabel',datestr(datenum(1995:3:2020,1,1),'yyyy'))
   ylabel('Delay [min]')
   box on
-  plot(TimeScale,polyval(p,TimeScale),'k:','linewi',2)  
+  if DeLin ~= 1; plot(TimeScale,polyval(p,TimeScale),'k:','linewi',2)  ; end
 
 
   drawnow

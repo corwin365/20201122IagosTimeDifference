@@ -26,6 +26,7 @@ function [] = bb_prep_data(Paths,Airports,Settings)
 %flight filenames
 FlightFiles = wildcardsearch(Paths.AeolusData,'*.nc');
 
+
 %possible airports, and their locations
 Airports.IDs  = [Airports.Eur,Airports.NA];
 Airports.Lons = NaN(numel(Airports.IDs),1);
@@ -214,7 +215,7 @@ clear Count
 Settings.Airports = Airports;
 
 %and save
-save([Paths.StoreDir,'/flight_data_',Paths.SourceIdentifier,'.mat'],'Flights','Settings')
+save([Paths.StoreDir,'/iagos_flight_data_',Paths.SourceIdentifier,'.mat'],'Flights','Settings')
 
 %and return
 return

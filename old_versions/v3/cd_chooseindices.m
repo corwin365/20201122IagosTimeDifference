@@ -40,6 +40,7 @@ end
 
 %now, replace with deasonalised if requested
 for iIndex=1:1:numel(Settings.ChosenDS)
+  if ~ismember(Settings.ChosenDS{iIndex},fieldnames(FlightIndices.DS)); continue; end
   Flight.(Settings.ChosenDS{iIndex}) = FlightIndices.DS.(Settings.ChosenDS{iIndex});
   Daily.( Settings.ChosenDS{iIndex}) =   DateIndices.DS.(Settings.ChosenDS{iIndex});
   WhichIsWhich.(Settings.ChosenDS{iIndex}) = 'DS';
@@ -59,6 +60,7 @@ Daily.Time   = DateIndices.Time;
 
 NewBounds = struct();
 for iIndex=1:1:numel(Settings.ChosenDL)
+  if ~ismember(Settings.ChosenDS{iIndex},fieldnames(FlightIndices.DS)); continue; end
 
   %compute linear trend based on DAILY data
   idx = Daily.(Settings.ChosenDL{iIndex});
@@ -72,13 +74,32 @@ for iIndex=1:1:numel(Settings.ChosenDL)
   Daily.( Settings.ChosenDL{iIndex}) = Daily.( Settings.ChosenDL{iIndex}) - tD;
   Flight.(Settings.ChosenDL{iIndex}) = Flight.(Settings.ChosenDL{iIndex}) - tF;
   
-  %rescale the data back into -1 to 1
-  %and compute and store a new estimate of the raw bounds  
+  %rescale the data back into -1 to 1  
   Daily.( Settings.ChosenDL{iIndex}) = rescale(Daily.( Settings.ChosenDL{iIndex}),-1,1);
   Flight.(Settings.ChosenDL{iIndex}) = rescale(Flight.(Settings.ChosenDL{iIndex}),-1,1);
 
   clear p tD tF idx;
 
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% smooth indices?
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%smooth?
+if Settings.IndexSmooth ~= 0;
+  for iIndex = 1:1:numel(Settings.Indices)
+    if contains(Settings.Indices{iIndex},Settings.DoNotSmooth) == 1; continue; end
+
+    disp(['Smoothing ',Settings.Indices{iIndex},' by ',num2str(Settings.IndexSmooth),' days'])
+    Daily.( Settings.Indices{iIndex}) = smoothn(Daily.(Settings.Indices{iIndex}),[1,Settings.IndexSmooth]);
+    Flight.(Settings.Indices{iIndex}) = interp1(Daily.Time,Daily.(Settings.Indices{iIndex}),Flight.Time);%we're by definition going to subdaily or worse, so this is safe
+
+    %rescale the data back into -1 to 1
+    Daily.( Settings.Indices{iIndex}) = rescale(Daily.( Settings.Indices{iIndex}),-1,1);
+    Flight.(Settings.Indices{iIndex}) = rescale(Flight.(Settings.Indices{iIndex}),-1,1);
+
+  end; clear iIndex
 end
 
 

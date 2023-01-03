@@ -185,5 +185,4 @@ for iDir=[2,1,3] %in this case, '3' is the wind climatology
 end
 
 
-stop
 

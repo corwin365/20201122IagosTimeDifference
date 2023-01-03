@@ -66,7 +66,11 @@ for iIndex=1:1:numel(Indices)
       a = interp1(NAO.Time,NAO.NAO,TimeScale.Flights);
       b = interp1(NAO.Time,NAO.NAO,TimeScale.Daily); 
       clear NAO      
-   
+    case 'SSTs'
+      SSTs = load([Root,'/ssts.mat']);
+      a = interp1(SSTs.Time,SSTs.SSTs,TimeScale.Flights);
+      b = interp1(SSTs.Time,SSTs.SSTs,TimeScale.Daily); 
+      clear SSTs      
     case 'TSI'
       TSI = load([Root,'/tsi.mat']);
       TSI.TSI(TSI.TSI < 1358) = NaN; %very noisy - remove an extreme outlier
@@ -75,7 +79,7 @@ for iIndex=1:1:numel(Indices)
       a = interp1(TSI.Time,TSI.TSI,TimeScale.Flights);
       b = interp1(TSI.Time,TSI.TSI,TimeScale.Daily); 
       clear TSI
-    case 'Time'
+    case 'Times'
       a = TimeScale.Flights;
       b = TimeScale.Daily; 
     case 'SeaIce'

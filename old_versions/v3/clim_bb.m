@@ -1,14 +1,11 @@
-function [] = gg_times(Paths,Settings)
+function [] = clim_bb(Paths,Settings)
 
-Indices  = Settings.Indices;
 Seasons  = Settings.Seasons;
-RTRange  = Settings.RelativeTime;
-Colours  = Settings.Colours;
 xPercent = Settings.CutOff;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%plot time series of time taken over the instrument record
+%split histograms of different index segments, for climate subpaper
 %
 %
 %Corwin Wright, c.wright@bath.ac.uk, 2021/02/10
@@ -45,17 +42,17 @@ SeasonNames{end+1} = 'All';
 %% split out the top and bottom x % by each index, then plot KDFs of the data
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+%prepare figure
+figure()
+clf
+set(gcf,'color','w','position',[97 226 1493 646])
+k = 0;
 
 
-for iDir=3%1:1:3 %1 is eastward, 2 is westward, 3 is round-trip
+
+for iDir=[2,3,1] %1 is eastward, 2 is westward, 3 is round-trip
 
 
-  %prepare figure
-  figure(iDir)
-  clf
-  set(gcf,'color','w')
-  k = 0;
- 
 
 
   
@@ -94,10 +91,9 @@ for iDir=3%1:1:3 %1 is eastward, 2 is westward, 3 is round-trip
     TotalFlightTime = TotalFlightTime./60;
 
 
-    for iIndex=1:1:numel(Indices)
 
       %select index
-      Index = FlightIndices.(Indices{iIndex});
+      Index = FlightIndices.HadCRUT;
 
       %subset to just these flights
       Index = Index(ThisGroup);
@@ -111,19 +107,9 @@ for iDir=3%1:1:3 %1 is eastward, 2 is westward, 3 is round-trip
 
       %generate KDFs of the data
       x = -80:1:80;%
-% % 
-% %       if    iDir == 3; x = 2.*min(RTRange):0.005:max(RTRange).*2;
-% %       else             x =    min(RTRange):0.005:max(RTRange);
-% %       end
       a = pdf(fitdist(   Top,'kernel','Kernel','normal'),x); a = a./nansum(a(:));
       b = pdf(fitdist(Bottom,'kernel','Kernel','normal'),x); b = b./nansum(b(:));
 
-
-% %       %convert scale from relative times to minutes of delay
-% %       if iDir == 3;  x = x.*(2.*OverallMedian) - 2.*OverallMedian;
-% %       else           x = x.*OverallMedian - OverallMedian;
-% %       end
-% %       x = x./60;
 
       %test similarity of the two datasets
       [h,p,kstat]= kstest2(Top,Bottom,'Alpha',0.05);      
@@ -133,7 +119,7 @@ for iDir=3%1:1:3 %1 is eastward, 2 is westward, 3 is round-trip
 
       %plot
       k = k+1;
-      subplot(numel(SeasonNames),numel(Indices),k)
+      subplot(3,numel(SeasonNames),k)
       cla
       hold on
       for y=0:0.01:0.04; plot(minmax(x),[1,1].*y,'-','linewi',0.5,'color',[1,1,1].*0.7); end
@@ -147,42 +133,48 @@ for iDir=3%1:1:3 %1 is eastward, 2 is westward, 3 is round-trip
       else       patch([x,max(x),min(x)],[c,0,0],[1,1,1].*0.9,'facealpha',1,'edgecolor','none')
       end
 
-      %mean values
-      scatter(mean(Top),0,60,[1,1,1].*0.6,'markerfacecolor','r','markerfacealpha',0.6,'marker','^')
-      scatter(mean(Bottom),0,60,[1,1,1].*0.6,'markerfacecolor','b','markerfacealpha',0.6,'marker','v')
-
-
       %print test results
-      xpos = 55;
+      xpos = 77;
       if h == 1; Label = ['\it\bf{{p=',num2str(round(p,2,'significant')),'}}'];
       else       Label = [    '\it{p=',num2str(round(p,2,'significant')),'}' ];%\it{n/s}';
       end
-      text(xpos,0.037,Label,                             'horizontalalignment','right','fontsize',10);
-      text(xpos,0.032,['\it{n=',num2str(numel(Top)),'}'],'horizontalalignment','right','fontsize',10);
+      text(xpos,0.037,Label,                             'horizontalalignment','right','fontsize',14);
+      text(xpos,0.032,['\it{n=',num2str(numel(Top)),'}'],'horizontalalignment','right','fontsize',14);
       
+      %overplot the distribution edges
+      plot(x,a,'r','linewi',0.5)
+      plot(x,b,'b','linewi',0.5)
 
       %tidy up panel
       axis([minmax(x) 0 0.04])
       grid off
       axis manual
       plot([1,1].*min(x),[-1,1].*999,'w-','linewi',3)
-      set(gca,'ytick',0:0.01:0.04,'yticklabel',{' ','1%','2%','3%','4%'})
+
+      if iSeason == 1 | iSeason == numel(SeasonNames);
+        set(gca,'ytick',0:0.01:0.04,'yticklabel',{' ','1%','2%','3%','4%'})
+      else
+        set(gca,'ytick',0:0.01:0.04,'yticklabel',{' '})
+      end
+      if iSeason == numel(SeasonNames); 
+        set(gca,'yaxislocation','right'); 
+        plot([1,1].*max(x),[-1,1].*999,'w-','linewi',3);
+      end
       plot([0,0],[0,4].*1e-2,'-','color',[1,1,1].*0)
 
-      %add a swatch of the index's signature colour
-      a = -55; b = -42; c= 0.032; d =0.038;
-      patch([a,b,b,a,a],[c,c,d,d,c],Colours.(Indices{iIndex}),'edgecolor','k','clipping','off')
-
-      if  iIndex == 1; ylabel(SeasonNames{iSeason}); end
-      if iSeason == 1; title(Indices{iIndex},'fontsize',17); end
-
+      if iDir == 2; title(SeasonNames{iSeason},'fontsize',20); end
+      if iDir == 1; xlabel('Delay [minutes]'); end
+% 
 
       drawnow
       clear Top Bottom x a b h c y idx Index Label kstat p
 
 
-    end; clear iIndex   TotalFlightTime
+clear   TotalFlightTime
 
 
   end; clear iSeason
+ 
 end; clear iDir
+
+
