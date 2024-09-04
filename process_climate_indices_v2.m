@@ -1,4 +1,4 @@
-function generate_climate_indices_v2(Settings)
+function process_climate_indices_v2(Settings)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -16,9 +16,7 @@ disp('+++++++++++++++++++++++++++')
 %% load flight data
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%get data
-FlightData = load([Settings.Paths.DataDir,'/',Settings.ID,'_flightinfo_merged.mat']);
-FlightData = FlightData.FlightData;
+load([Settings.Paths.DataDir,'/',Settings.ID,'_flightinfo_normalised.mat'])
 
 %generate a continuous timescale at daily cadence
 TimeScale  = min(Settings.Choices.TimeRange):1:max(Settings.Choices.TimeRange);
@@ -74,7 +72,7 @@ for iIndex=1:1:numel(Settings.Indices.List)
       TSI.TSI = smoothn(TSI.TSI,[31,1]);%very noisy - smooth to make it fair
       b = interp1(TSI.Time,TSI.TSI,TimeScale); 
       clear TSI
-    case 'Times'
+    case 'Time'
       b = TimeScale; 
     case 'SeaIce'
       SeaIce = readmatrix([Root,'/N_seaice_extent_daily_v3.0.csv']);
@@ -85,6 +83,8 @@ for iIndex=1:1:numel(Settings.Indices.List)
       AMO = load([Root,'/AMO.mat']);
       b = interp1(AMO.Time,AMO.AMO,TimeScale); 
       clear AMO
+    case 'Annual'
+      b = round(sin(pi/2 + date2doy(TimeScale)./366.*2.*pi),3); % 1 is Jan 1st, -1 is Jul 1
     otherwise
       disp(['Index ',Settings.Indices{iIndex},' not specified; stopping'])
       stop
@@ -277,18 +277,23 @@ x = Output.Date;
 xq = FlightData.Date;
 
 %create table
-FlightIndices = table('Size',[numel(xq),numel(VarNames)], ...
-                      'VariableTypes',VarTypes,          ...
-                      'VariableNames',VarNames           );
+FlightIndices = table('Size',[numel(xq),numel(VarNames)+1],     ...
+                      'VariableTypes',["double";VarTypes],    ...
+                      'VariableNames',["FlightIndex",VarNames]);
 
 FlightIndices.Date = xq;
 for iIndex=2:1:numel(VarNames); 
   FlightIndices.(VarNames{iIndex}) = interp1(x,Output.(VarNames{iIndex}),xq);
 end
 
+FlightIndices.FlightIndex = FlightData.FlightIndex; %we'll use this for table-joins later
+
 clear x xq VarNames VarTypes
 
 DateIndices   = Output; clear Output
+
+
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% save results

@@ -132,6 +132,9 @@ for iFile = 1:1:numel(FlightFiles)
     Data = Data(idxStore == 2,:);
     clear idxStore iAirport Dep Arr
 
+    %some flights have the same arrival and departure. wipe them.
+    Good = find(Data.ARR_APRT ~= Data.DEPT_APRT);
+    Data = Data(Good,:);
 
     %ok, now the data are manageable! select the array and start formatting them to match the IAGOS data
     Dep = Data{:,4};
@@ -140,6 +143,7 @@ for iFile = 1:1:numel(FlightFiles)
     Instrument = cell(numel(Plane),1);
     for iCell=1:1:numel(Instrument); Instrument{iCell} = 'NOT_IAGOS'; end%use this to filter out the above when tracking individual planes
     clear iCell
+
 
     %merge timestamp parts
     DepTime= datenum(string(table2array(Data(:,5))),'yyyymmdd') + table2array(Data(:,6))./24;
@@ -156,7 +160,7 @@ for iFile = 1:1:numel(FlightFiles)
     end; clear iFlight
 
     t = ArrTime-DepTime; t = t.*24.*60.*60; %seconds
-    Date = floor(DepTime);
+    Date = DepTime;
 
     %store
     for iFlight=1:1:numel(t)

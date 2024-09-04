@@ -16,11 +16,19 @@ disp('Formatting data from IAGOS')
 disp('+++++++++++++++++++++++++++')
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% prep
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%get valid airport list
+Airports = load([Settings.Paths.DataDir,'/',Settings.ID,'_airportinfo.mat']);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% find files for the time period selected
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %flight filenames
-FlightFiles = wildcardsearch(Settings.Paths.AeolusData,'*.nc');
+FlightFiles = wildcardsearch(Settings.Paths.AeolusData,'*.nc*');
+
 
 %find a date for each file
 idx1 = strfind(FlightFiles,'IAGOS_timeseries_');
@@ -64,10 +72,16 @@ for iFlight=1:1:numel(FlightFiles)
   Data = rCDF(FlightFiles{iFlight});
 
   %get the file metadata
-  MetaData = Data.MetaData.Attributes.Global;  
+  MetaData = Data.MetaData.Attributes.Global;
+  NFields = numel(MetaData);  
+
+  %are we using the old or the new format?
+  if strcmp(class(MetaData(1).Value),'string'); Format = 2; else Format = 1; end %newer format (post roughly 2022?) is 2, original flavour is 1
+
+  %if we're using the newer data format, we need to convert the string arrays to char arrays
+  if Format == 2;  for iField=1:1:NFields; MetaData(iField).Value = convertStringsToChars(MetaData(iField).Value ); end; end
   
   %hence, identify start and end location, date, and plane/instrument ID
-  NFields = numel(MetaData);
   for iField=1:1:NFields
     if strcmp(MetaData(iField).Name,'departure_airport')
       Dep = MetaData(iField).Value(1:3);
@@ -75,7 +89,9 @@ for iFlight=1:1:numel(FlightFiles)
       Arr = MetaData(iField).Value(1:3);
     elseif strcmp(MetaData(iField).Name,'departure_UTC_time')
       Date = MetaData(iField).Value;
-    elseif strcmp(MetaData(iField).Name,'title')
+    elseif Format == 1 && strcmp(MetaData(iField).Name,'title');
+      ID = MetaData(iField).Value;
+    elseif Format == 2 && strcmp(MetaData(iField).Name,'platform');
       ID = MetaData(iField).Value;
     end
   end
@@ -95,14 +111,14 @@ for iFlight=1:1:numel(FlightFiles)
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  
 
   %is each airport on one of our lists?
-  if ~ismember(Arr,[Settings.Airports.NA,Settings.Airports.Eur]); continue; end
-  if ~ismember(Dep,[Settings.Airports.NA,Settings.Airports.Eur]); continue; end    
+  if ~ismember(Arr,Airports.AirportData.Code); continue; end
+  if ~ismember(Dep,Airports.AirportData.Code); continue; end    
 
   %find which continent the arrival and depature are in
-  Start.NA  = ismember(Dep,Settings.Airports.NA);
-  Start.Eur = ismember(Dep,Settings.Airports.Eur);
-  End.NA    = ismember(Arr,Settings.Airports.NA);
-  End.Eur   = ismember(Arr,Settings.Airports.Eur);    
+  Start.NA  = ismember(Dep,Airports.AirportData.Code(Airports.AirportData.Continent == 1));
+  Start.Eur = ismember(Dep,Airports.AirportData.Code(Airports.AirportData.Continent == 2));
+  End.NA    = ismember(Arr,Airports.AirportData.Code(Airports.AirportData.Continent == 1));
+  End.Eur   = ismember(Arr,Airports.AirportData.Code(Airports.AirportData.Continent == 2));
     
   %are the two ends on different continents?
   if Start.NA  + End.NA  == 2; continue; end
@@ -147,12 +163,13 @@ FlightData = FlightData(Filled == 1,:);
 %% save results
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-
 save([Settings.Paths.DataDir,'/',Settings.ID,'_flightinfo_iagos.mat'],'FlightData')
 
 disp('--------------------------')
 disp('Data from IAGOS formatted')
 disp('--------------------------')
+
+
 
 end
 
