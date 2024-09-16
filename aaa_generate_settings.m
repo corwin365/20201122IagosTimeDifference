@@ -17,7 +17,7 @@ clear all
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %name of this set of analyses
-SettingsID = 'windtest';
+SettingsID = 'all';
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %file paths to the data and climate indices
@@ -42,7 +42,7 @@ Paths.Era5Dir    = [LocalDataDir,'/ERA5/'];              %path to ERA5 data
 Choices.DataSets = [1]; 
 
 %what time period are we looking over?
-Choices.TimeRange = [datenum(2022,1,1),datenum(2022,1,31)];
+Choices.TimeRange = [datenum(1994,1,1),datenum(2024,3,29)];
 
 %what flight directions do we want to plot results for? E eastwards, W westwards, R round trip
 Choices.Directions = {'W','R','E'};
@@ -82,8 +82,16 @@ Seasons.List = fieldnames(Seasons);
 %climate index handling
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+%do we want to lag the data? 
+%(optimal lags will be computed anyway, this determines if they are applied)
+Choices.ApplyLags = 1;
+
+%what is the maximum lag to test out to?
+Choices.MaxLag = 365; % days
+
 %what indices should we use?
-Indices.List = {'ENSO','NAO','QBO','TSI','Annual','Time'};
+% Indices.List = {'Annual','ENSO','NAO','QBO','Time','TSI'};
+Indices.List = {'ENSO','NAO','QBO','Time','TSI'};
 
 %what range should we normalise the indices over? (percentiles)
 Indices.IndexRange = [0,100];
@@ -92,7 +100,7 @@ Indices.IndexRange = [0,100];
 Indices.DS = {'SSTs','SeaIce'};
 
 %which indices should be delinearised?
-Indices.DL = {'SSTs','SeaIce'};
+Indices.DL = {'SSTs','SeaIce','AMO'};
 
 %how far should we smooth "background" data for index deseasonalisation?
 Indices.DSSmooth = 61; %days - must be an odd positive integer
@@ -111,13 +119,27 @@ Indices.Colours.Fuel    = [  0,  0,  0]./255;
 Indices.Colours.HadCRUT = [255,178,102]./255;
 Indices.Colours.NAO     = [ 46,148,130]./255;
 Indices.Colours.NAM     = [ 69,174, 98]./255;
-Indices.Colours.QBO     = [113, 69,168]./255;
+Indices.Colours.QBO     = [255,209,107]./255;
 Indices.Colours.SeaIce  = [152, 51, 91]./255;
 Indices.Colours.TSI     = [196, 66, 79]./255;
 Indices.Colours.SSTs    = [204,204,0]./255;
 Indices.Colours.Time    = [1,1,1].*0.6;
-Indices.Colours.Annual  = [255,209,107]./255;
+Indices.Colours.Annual  = [113, 69,168]./255;
+Indices.Colours.AMO     = [255,102,178]./255;
 
+%marker symbols to use for the indices in plots
+Indices.Symbols.ENSO    = 's';
+Indices.Symbols.Fuel    = 'o';
+Indices.Symbols.HadCRUT = 'o';
+Indices.Symbols.NAO     = 'v';
+Indices.Symbols.NAM     = 'o';
+Indices.Symbols.QBO     = '^';
+Indices.Symbols.SeaIce  = 'o';
+Indices.Symbols.TSI     = 's';
+Indices.Symbols.SSTs    = 'o';
+Indices.Symbols.Time    = 'd';
+Indices.Symbols.Annual  = 'o';
+Indices.Symbols.AMO     = 'o';
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                    
 %airports to include. We'll provide two definitions, one a whitelist of
@@ -169,8 +191,8 @@ Airports.Bounds.Eur = [-10, 20,35,60];
 %ERA5 wind map resolution
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-Choices.WindMap.LonScale   = -120:1.5:10;
-Choices.WindMap.LatScale   = 30:1.5:70;
+Choices.WindMap.LonScale   = -120:5:10;
+Choices.WindMap.LatScale   = 30:5:70;
 Choices.WindMap.TimeScale  = min(Choices.TimeRange):1:max(Choices.TimeRange);
 
 

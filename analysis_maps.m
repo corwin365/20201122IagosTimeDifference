@@ -112,7 +112,7 @@ if ~exist(WindMapFile,'file') | Settings.Choices.FlightPathMap.Regenerate == 1;
   %get climatological winds
   x = -180:1.5:180; y = -90:1.5:90; t = datenum(2020,1,1:1:366); %year will be ignored
   [xi,yi,ti] = meshgrid(x,y,t);
-  stop
+
   BG = get_context(xi,yi,'TimePoints',ti,'Wind',true,'Era5_Clim',true,'Pressure',250); 
   clear xi yi ti
 

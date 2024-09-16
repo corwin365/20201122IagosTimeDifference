@@ -20,12 +20,9 @@ disp('+++++++++++++++++++++++++++')
 load([Settings.Paths.DataDir,'/',Settings.ID,'_flightinfo_normalised.mat'])
 
 %load indices
-load([Settings.Paths.DataDir,'/',Settings.ID,'_indices.mat'])
-
-%join indices onto flight data, and drop/re
-Data = innerjoin(FlightData,FlightIndices);
-
-clear DateIndices FlightData FlightIndices RangeStore RouteData
+if Settings.Choices.ApplyLags == 0; load([Settings.Paths.DataDir,'/',Settings.ID,'_indices.mat'])
+else;                               load([Settings.Paths.DataDir,'/',Settings.ID,'_laggedindices.mat'])
+end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -45,6 +42,9 @@ PStoreT = NStore; %statistical test result
 
 for iSeason=1:1:numel(Settings.Seasons.List)
   for iDirection=1:1:numel(Settings.Choices.Directions)
+
+    %join indices onto flight data
+    Data = innerjoin(FlightData,FlightIndices.(Settings.Choices.Directions{iDirection}));
 
     %find flights in this season and direction
     InThisSeason    = find(table2array(Data.InSeasons(:,iSeason)) == 1);
@@ -103,7 +103,7 @@ for iSeason = 1%1:1:numel(Settings.Seasons.List)
   clf; set(gcf,'color','w'); 
   % sgtitle(Settings.Seasons.List{iSeason})
   % subplot = @(m,n,p) subtightplot (m, n, p, [0.1,0.01], 0.08, 0.2);
-  subplot = @(m,n,p) subtightplot (m, n, p, [0.1,0.03], 0.08, 0.15);
+  subplot = @(m,n,p) subtightplot (m, n, p, [0.1,0.02], 0.08, 0.15);
   k = 0; %panel count
   for iDirection=1:1:numel(Settings.Choices.Directions)
     for iIndex=1:1:numel(Settings.Indices.List)
@@ -150,13 +150,16 @@ for iSeason = 1%1:1:numel(Settings.Seasons.List)
       if h == 1; Label = ['\it\bf{{PK',KString,'}}'];
       else       Label = [    '\it{PK',KString,'}' ];
       end
-      text(max(x),0.05,Label,'horizontalalignment','right','verticalalignment','top','fontsize',12);
+      text(max(x)-2,0.05,Label,'horizontalalignment','right','verticalalignment','top','fontsize',10);
 
-      % %print T-test test results      
-      % if h == 1; Label = ['\it\bf{{PT=',num2str(round(PT,2,'significant')),'}}'];
-      % else       Label = [    '\it{PT=',num2str(round(PT,2,'significant')),'}' ];
-      % end
-      % text(xpos,0.045,Label,                    'horizontalalignment','right','fontsize',12);
+      %print T-test test results   
+      if PT < 1e-3; TString = '<0.001';
+      else          TString  = ['=',num2str(round(PT,2,'significant'))];
+      end      
+      if h == 1; Label = ['\it\bf{{PT',TString,'}}'];
+      else       Label = [    '\it{PT',TString,'}' ];
+      end
+      text(max(x)-2,0.044,Label,'horizontalalignment','right','fontsize',10);
 
       % %print number of samples
       % text(xpos,0.042,['\it{n=',num2str(N),'}'],'horizontalalignment','right','fontsize',12);      

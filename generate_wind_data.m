@@ -8,7 +8,7 @@ function [] = generate_wind_data(Settings)
 %  1. pointwise U and V along each flight track
 %  2. maps of U and V every three hours
 %
-%Corwin Wright, c.wright@bath.ac.uk, 2023/01/02
+%Corwin Wright, c.wright@bath.ac.uk, 2024/09/04
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

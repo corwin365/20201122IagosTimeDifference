@@ -20,8 +20,12 @@ disp('+++++++++++++++++++++++++++')
 %load data
 load([Settings.Paths.DataDir,'/',Settings.ID,'_flightinfo_normalised.mat'])
 
-%load indices
-load([Settings.Paths.DataDir,'/',Settings.ID,'_indices.mat'])
+%load indices. Arbitrarily take the first direction, as they are unlagged
+A = load([Settings.Paths.DataDir,'/',Settings.ID,'_indices.mat']);
+RangeStore    = A.RangeStore.(   Settings.Choices.Directions{1});
+DateIndices   = A.DateIndices.(  Settings.Choices.Directions{1});
+FlightIndices = A.FlightIndices.(Settings.Choices.Directions{1});
+clear A
 
 clear FlightIndices OverallMedianTimes RouteData
 

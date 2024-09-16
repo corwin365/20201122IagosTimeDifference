@@ -2,9 +2,9 @@ function analysis_regression(Settings)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%KDF analysis of merged aircraft data
+%regression analysis of merged aircraft data
 %
-%Corwin Wright, c.wright@bath.ac.uk, 2023/01/02
+%Corwin Wright, c.wright@bath.ac.uk, 2024/09/14
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -21,12 +21,11 @@ disp('+++++++++++++++++++++++++++')
 load([Settings.Paths.DataDir,'/',Settings.ID,'_flightinfo_normalised.mat'])
 
 %load indices
-load([Settings.Paths.DataDir,'/',Settings.ID,'_indices.mat'])
+if Settings.Choices.ApplyLags == 0;
+  load([Settings.Paths.DataDir,'/',Settings.ID,'_indices.mat'])
+else;                               load([Settings.Paths.DataDir,'/',Settings.ID,'_laggedindices.mat'])
+end
 
-%join indices onto flight data, and drop
-Data = innerjoin(FlightData,FlightIndices);
-
-clear DateIndices FlightData FlightIndices RangeStore RouteData OverallMedianTimes
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% allocate storage
@@ -49,6 +48,9 @@ clear Fields iF
 %for each season and direction...
 for iSeason=1:1:numel(Settings.Seasons.List)
   for iDirection=1:1:numel(Settings.Choices.Directions)
+
+    %join indices onto flight data
+    Data = innerjoin(FlightData,FlightIndices.(Settings.Choices.Directions{iDirection}));
 
     %find flights in this season and direction
     InThisSeason    = find(table2array(Data.InSeasons(:,iSeason)) == 1);
@@ -80,7 +82,7 @@ for iSeason=1:1:numel(Settings.Seasons.List)
     Reg.R2( iDirection,iSeason,:) = mdl.Rsquared.Adjusted; % adjusted coefficient of determination    
     
     %tidy up
-    clear FlightsInUse ModelInput mdl Coefs
+    clear FlightsInUse ModelInput mdl Coefs Data
 
   end; clear iDirection
 end; clear iSeason
@@ -95,11 +97,12 @@ Reg.SE  = Reg.SE  .* 2;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-figure
+% figure
 clf
 k = 0;
 set(gcf,'color','w')
-subplot = @(m,n,p) subtightplot (m, n, p, [0.03,0.03], 0.1, 0.1);
+subplot = @(m,n,p) subtightplot (m, n, p, 0.04, 0.1, 0.1);
+Letters = 'abcdefghijklmnpqrstuvwxyz';
 
 XLimit = 15; %minutes
 
@@ -110,7 +113,7 @@ for iSeason=1:1:numel(Settings.Seasons.List)
     k = k+1;
     subplot(numel(Settings.Seasons.List),numel(Settings.Choices.Directions),k)
     cla
-    hold on; box on; grid off;
+    hold on; box on; grid on;
     axis([-XLimit,XLimit, 0.5, numel(Settings.Indices.List)+0.5])
     set(gca,'ydir','reverse')
 
@@ -128,9 +131,15 @@ for iSeason=1:1:numel(Settings.Seasons.List)
 
     %handle y-axes and horizontal gridlines
     set(gca,'ytick',[])
-    for iY=1:1:numel(Settings.Indices.List); 
-      plot([-1,1].*1000,[1,1].*iY,'-','color',Settings.Indices.Colours.(Settings.Indices.List{iY}),'linewi',2,'linestyle',':'); 
+    for iY=1:1:numel(Settings.Indices.List);
+      x = [-1,1,1,-1].*1000;
+      y = ([-1,-1,1,1].*0.15)+iY;
+      patch(x,y,Settings.Indices.Colours.(Settings.Indices.List{iY}),'edgecolor','none','facealpha',0.55)
+      plot([-1,1].*1000,[1,1].*iY,'-','color',Settings.Indices.Colours.(Settings.Indices.List{iY}),'linewi',1,'linestyle',':');
     end; clear iY
+
+
+
 
     %y-axis labels
     if iDirection == 1 | iDirection == numel(Settings.Choices.Directions)
@@ -144,6 +153,7 @@ for iSeason=1:1:numel(Settings.Seasons.List)
       %get value, error and significance
       Value = Reg.Est(iDirection,iSeason,iIndex)./60; %minutes
       SE    = Reg.SE( iDirection,iSeason,iIndex)./60;
+      p     = Reg.P(  iDirection,iSeason,iIndex);
 
       %if it's outside the plot range, scale until it is
       if abs(Value) > XLimit; 
@@ -162,13 +172,17 @@ for iSeason=1:1:numel(Settings.Seasons.List)
       %plot
       StErr = Value + [-1,1]  .* SE;
       plot(StErr,[1,1].*iIndex,'k-','linewi',1)  
-      plot([1,1].*StErr(1),[-1,1].*0.5+iIndex,'k-','linewi',1)
-      plot([1,1].*StErr(2),[-1,1].*0.5+iIndex,'k-','linewi',1)     
+      plot([1,1].*StErr(1),[-1,1].*0.5+iIndex,'k-','linewi',0.5)
+      plot([1,1].*StErr(2),[-1,1].*0.5+iIndex,'k-','linewi',0.5)     
 
-      plot(Value,iIndex,'o',...
-           'color', 'k', 'linewi',1, ...
-           'markerfacecolor',Settings.Indices.Colours.(Settings.Indices.List{iIndex}), ...
-           'markersize',     15)
+      if p < 0.05; LW = 2; Colour = Settings.Indices.Colours.(Settings.Indices.List{iIndex}); 
+      else         LW = 1; Colour = 'w';
+      end
+
+      plot(Value,iIndex,Settings.Indices.Symbols.(Settings.Indices.List{iIndex}),...
+           'color', 'k', 'linewi',LW, ...
+           'markerfacecolor',Colour, ...
+           'markersize',     10)
 
     end; clear iIndex
 
@@ -176,11 +190,14 @@ for iSeason=1:1:numel(Settings.Seasons.List)
 
     %label R2
     text(min(get(gca,'xlim'))+0.995.*range(get(gca,'xlim')), ...
-         numel(Settings.Indices.List)+0.25,['R^2 = ',num2str(round(Reg.R2(iDirection,iSeason,1),2))], ...
-         'fontsize',11,'horizontalalignment','right')    
+         numel(Settings.Indices.List)+0.37,['R^2 = ',num2str(round(Reg.R2(iDirection,iSeason,1),2))], ...
+         'fontsize',11,'horizontalalignment','right','verticalalignment','bottom','FontWeight','bold')    
+
+     %label panel
+     text(min(get(gca,'xlim')),0.5,['(',num2str(Letters(k)),')'],'horizontalalignment','left','VerticalAlignment','top','Clipping','off')
 
     if iDirection == 1 
-      ylabel(Settings.Seasons.List{iSeason},'fontsize',48,'fontweight','bold')
+      ylabel(Settings.Seasons.List{iSeason},'fontsize',30,'fontweight','bold')
     end
 
   end; clear iDirection
