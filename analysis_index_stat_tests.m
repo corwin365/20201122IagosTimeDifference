@@ -73,12 +73,28 @@ disp(['VIFs lie in the range ',num2str(min(VIF)),' -- ',num2str(max(VIF))])
 clear NIndices iIndex idx I J mdl VIF
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% autocorrelation - Ljung-Box Q-test
+%% autocorrelation - Durbin-Watson test
 %requires matlab econometrics toolbox
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+idx = find(FlightData.Direction ~= "R");
+mdl = fitlm(FlightIndices(idx,3:end),FlightData.t(idx));
+[~,DW] = dwtest(mdl);
+disp(["DW test output, all: "+num2str(DW)])
+clear idx DW
 
 
+idx = find(FlightData.Direction == "E");
+mdl = fitlm(FlightIndices(idx,3:end),FlightData.t(idx));
+[~,DW] = dwtest(mdl);
+disp(["DW test output, E: "+num2str(DW)])
+clear idx DW
+
+idx = find(FlightData.Direction == "W");
+mdl = fitlm(FlightIndices(idx,3:end),FlightData.t(idx));
+[~,DW] = dwtest(mdl);
+disp(["DW test output, W: "+num2str(DW)])
+clear idx DW
 
 
 

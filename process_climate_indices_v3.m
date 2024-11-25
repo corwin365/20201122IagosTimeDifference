@@ -39,7 +39,7 @@ end
 load([Settings.Paths.DataDir,'/',Settings.ID,'_flightinfo_normalised.mat'])
 
 %generate a continuous timescale at daily cadence. Add a year on each end if possible so we can circshift them for lagging
-TimeScale  = min(Settings.Choices.TimeRange)-100:1:max(Settings.Choices.TimeRange)+100;
+TimeScale  = min(Settings.Choices.TimeRange)-365:1:max(Settings.Choices.TimeRange)+365;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% for each requested index:
@@ -83,7 +83,11 @@ for iIndex=1:1:numel(Settings.Indices.List)
     case 'SSTs'
       SSTs = load([Root,'/ssts.mat']);
       b = interp1(SSTs.Time,SSTs.SSTs,TimeScale); 
-      clear SSTs      
+      clear SSTs  
+    case 'u1060'
+      U_1060 = load([Root,'/u_1060.mat']);
+      b = interp1(U_1060.Time,U_1060.U,TimeScale); 
+      clear U_1060     
     case 'TSI'
       TSI = load([Root,'/tsi.mat']);
       TSI.TSI(TSI.TSI < 1358) = NaN; %very noisy - remove an extreme outlier

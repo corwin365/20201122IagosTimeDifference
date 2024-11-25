@@ -17,7 +17,7 @@ clear all
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %name of this set of analyses
-SettingsID = 'all';
+SettingsID = 'basic_noannual';
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %file paths to the data and climate indices
@@ -42,16 +42,16 @@ Paths.Era5Dir    = [LocalDataDir,'/ERA5/'];              %path to ERA5 data
 Choices.DataSets = [1]; 
 
 %what time period are we looking over?
-Choices.TimeRange = [datenum(1994,1,1),datenum(2024,3,29)];
+Choices.TimeRange = [728295,739340];
 
-%what flight directions do we want to plot results for? E eastwards, W westwards, R round trip
+%what flight directions do we want to proces results for? E eastwards, W westwards, R round trip
 Choices.Directions = {'W','R','E'};
 
 %for data where we have the flight trace, how close to the airport should we discard data?
 Choices.MinDist = 10; %km. Selected via sensitivity testing over range 0-1000km
 
 %what is the minimum number of flights (per route-season) to be included in the dataset?
-Choices.MinFlights = 15;
+Choices.MinFlights = 10;
 
 %how close in time do flights have to be to be paired as a round-trip?
 Choices.MinPairDistance = 1; %days
@@ -62,6 +62,10 @@ Choices.MaxDeviation = 20; %percent. Set to 100 or greater to not filter
 %how should we define the airports used
 Choices.Airports = 'list'; %'list' for whitelist definition, or 'geo' for geographic definition
 
+%how large a gap in an IAGOS data record is acceptable before we discard it?
+Choices.Maxdt = 15*60; %seconds
+Choices.MaxdLat = 10; %degrees. Need to be generous as some flights get near the pole.
+Choices.MaxdLon = 10; %degrees
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %how should we split the data into "seasons"?
@@ -97,17 +101,18 @@ Indices.List = {'ENSO','NAO','QBO','Time','TSI'};
 Indices.IndexRange = [0,100];
 
 %which indices should be used deseasonalised, as opposed to raw?
-Indices.DS = {'SSTs','SeaIce'};
+Indices.DS = {'SSTs','SeaIce'}; %any not specified in Indices.List will be ignored
 
 %which indices should be delinearised?
-Indices.DL = {'SSTs','SeaIce','AMO'};
+Indices.DL = {'SSTs','SeaIce','AMO'};  %any not specified in Indices.List will be ignored
 
-%how far should we smooth "background" data for index deseasonalisation?
+%how far should we smooth "background" data for index deseasonalisation, if requested.
 Indices.DSSmooth = 61; %days - must be an odd positive integer
 
 %how many days should we smooth the climate indices by? Set to 0 to not smooth
-%this is different to the above - the above is just a window for deaseasonalisation and is REMOVED from the data 
-%this is an overall smoothing APPLIED TO the data 
+%this is different to the above:
+% - the above is just a window for deaseasonalisation and is REMOVED from the data 
+% - this is an overall smoothing APPLIED TO the data 
 Indices.SmoothLength = 7;
 
 %which indices should NOT be smoothed?
@@ -121,6 +126,7 @@ Indices.Colours.NAO     = [ 46,148,130]./255;
 Indices.Colours.NAM     = [ 69,174, 98]./255;
 Indices.Colours.QBO     = [255,209,107]./255;
 Indices.Colours.SeaIce  = [152, 51, 91]./255;
+Indices.Colours.u1060   = [255,102,178]./255;
 Indices.Colours.TSI     = [196, 66, 79]./255;
 Indices.Colours.SSTs    = [204,204,0]./255;
 Indices.Colours.Time    = [1,1,1].*0.6;
@@ -212,7 +218,7 @@ Choices.FlightPathMap.Regenerate = 0;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %what percentage of top and bottom data should we use for the KDF split analysis?
-Choices.KDFSplit.CutOff = 5; %i.e. 1 stdev
+Choices.KDFSplit.CutOff = 20;
 
 %what bins should we use (in minutes delay)
 Choices.KDFSplit.Bins = -60:1:60;
@@ -227,6 +233,20 @@ Choices.KDFPc.Percentiles = [2.5,18,50,82,97.5];
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 Choices.LaggedRegression.LagScale = 0:1:60;
+
+
+%height bins for cruise height/pressure analysis
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%note that, since we take a MODE, the results are sensitive to this choice
+Choices.ZScale = 0:0.2:14;
+Choices.PScale = 150:10:350;
+
+
+%fixed date to use in cost computstion
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Choices.PriceFixDate = datenum(2023,5,15);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

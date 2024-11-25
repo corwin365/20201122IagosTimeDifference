@@ -32,6 +32,8 @@ FlightStore = {};
 textprogressbar('Importing tracks ')
 for iFlight=1:1:size(FlightData,1)
 
+  if FlightData.DataSource(iFlight) ~= "IAGOS"; continue; end
+
   %I generated the flight list on my laptop but want to also run it on 0184,
   %so this line just switches filepaths if needed
   FilePath = FlightData.FilePath(iFlight);
@@ -65,5 +67,5 @@ save([Settings.Paths.DataDir,'/',Settings.ID,'_flighttracks.mat'],'Store','-v7.3
 
 
 disp('--------------------------')
-disp('Wind data generated')
+disp('Track data generated')
 disp('--------------------------')

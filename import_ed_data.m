@@ -27,7 +27,8 @@ AirportConversion = [Settings.Paths.DataDir,'/airports.csv'];
 FlightFiles = wildcardsearch(Settings.Paths.EdData,'*tfms*.csv');
 
 %possible airports, and their locations
-Airports.IDs  = [Settings.Airports.Eur,Settings.Airports.NA];
+Airports.IDs  = [Settings.Airports.(Settings.Choices.Airports).Eur, ...
+                 Settings.Airports.(Settings.Choices.Airports).NA];
 Airports.Lons = NaN(numel(Airports.IDs),1);
 Airports.Lats = Airports.Lons;
 

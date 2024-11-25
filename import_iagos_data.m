@@ -62,6 +62,8 @@ Filled = zeros([numel(FlightFiles),1]);
 
 
 textprogressbar('Importing IAGOS flights ')
+Reasons = {'list','region','dt','dLat','dLon'};
+Rejected = zeros(numel(Reasons),1);
 for iFlight=1:1:numel(FlightFiles)
 
   %get flight information
@@ -96,23 +98,23 @@ for iFlight=1:1:numel(FlightFiles)
     end
   end
   clear MetaData NFields iField
-  
+
+  %convert date to Matlab time
+  Date = datenum(Date,'YYYY-mm-DDTHH:MM:ss');  
+
   %convert the ID string to an *aircraft* ID and an *instrument* ID
   ID = split(ID,',');
   Plane = ID{4}; Instrument = ID{1};
   Plane(Plane == ' ') = []; Instrument(Instrument == ' ') = []; %remove excess spaces
   clear ID
-  
-  %convert date to Matlab time
-  Date = datenum(Date,'YYYY-mm-DDTHH:MM:ss');  
 
 
   % is this a valid flight?
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  
 
   %is each airport on one of our lists?
-  if ~ismember(Arr,Airports.AirportData.Code); continue; end
-  if ~ismember(Dep,Airports.AirportData.Code); continue; end    
+  if ~ismember(Arr,Airports.AirportData.Code); Rejected(1) = Rejected(1)+1;  continue; end
+  if ~ismember(Dep,Airports.AirportData.Code); Rejected(1) = Rejected(1)+1; continue; end    
 
   %find which continent the arrival and depature are in
   Start.NA  = ismember(Dep,Airports.AirportData.Code(Airports.AirportData.Continent == 1));
@@ -121,10 +123,17 @@ for iFlight=1:1:numel(FlightFiles)
   End.Eur   = ismember(Arr,Airports.AirportData.Code(Airports.AirportData.Continent == 2));
     
   %are the two ends on different continents?
-  if Start.NA  + End.NA  == 2; continue; end
-  if Start.Eur + End.Eur == 2; continue; end
+  if Start.NA  + End.NA  == 2; Rejected(2) = Rejected(2)+1; continue; end
+  if Start.Eur + End.Eur == 2; Rejected(2) = Rejected(2)+1; continue; end
   clear Start End
+
+  %qc: check maximum gap in data
+  if Settings.Choices.Maxdt   < max(diff(Data.UTC_time)); Rejected(3) = Rejected(3)+1; continue; end
+  if Settings.Choices.MaxdLat < max(diff(Data.lon));      Rejected(4) = Rejected(4)+1; continue; end
+  if Settings.Choices.MaxdLon < max(diff(Data.lat));      Rejected(5) = Rejected(5)+1; continue; end
+
   
+
   %remove any points within Settings.MinDist of DEP or ARR
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   
@@ -137,6 +146,9 @@ for iFlight=1:1:numel(FlightFiles)
   Data.UTC_time(Bad) = NaN;
   clear Bad distanceFromArr distanceFromDep
 
+
+
+  
   % store!
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%   
   
@@ -164,6 +176,13 @@ FlightData = FlightData(Filled == 1,:);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 save([Settings.Paths.DataDir,'/',Settings.ID,'_flightinfo_iagos.mat'],'FlightData')
+
+disp('Selection/QC rejections:')
+for iReason=1:1:numel(Reasons)
+  disp([Reasons{iReason},': ',num2str(Rejected(iReason))])
+end; 
+clear iReason Reasons Rejected
+
 
 disp('--------------------------')
 disp('Data from IAGOS formatted')

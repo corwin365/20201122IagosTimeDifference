@@ -1,38 +1,97 @@
-function analysis_regression(Settings)
+function analysis_cruisepressure(Settings)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%regression analysis of merged aircraft data
+%is there a correlation between climate indices and cruise pressure levels?
 %
-%also saves the regression results
-%
-%
-%Corwin Wright, c.wright@bath.ac.uk, 2024/09/14
+%Corwin Wright, c.wright@bath.ac.uk, 2024/10/28
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-disp('+++++++++++++++++++++++++++++++')
-disp('Multilinear regression analysis')
-disp('+++++++++++++++++++++++++++++++')
+disp('+++++++++++++++++++++++++++')
+disp('Cruise pressure assessment')
+disp('+++++++++++++++++++++++++++')
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% load files
+%% load data
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%load data
-load([Settings.Paths.DataDir,'/',Settings.ID,'_flightinfo_normalised.mat'])
+%load flight metadata
+Meta = load([Settings.Paths.DataDir,'/',Settings.ID,'_flightinfo_normalised.mat']);
 
 %load indices
 if Settings.Choices.ApplyLags == 0;
-      load([Settings.Paths.DataDir,'/',Settings.ID,'_indices.mat'])
-else; load([Settings.Paths.DataDir,'/',Settings.ID,'_laggedindices.mat'])
+      Indices = load([Settings.Paths.DataDir,'/',Settings.ID,'_indices.mat'])
+else; Indices = load([Settings.Paths.DataDir,'/',Settings.ID,'_laggedindices.mat']);
 end
 
+%load flight track wind data
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% allocate storage
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%merge together
+Tracks = load([Settings.Paths.DataDir,'/',Settings.ID,'_flighttracks.mat']);
+Tracks = Tracks.Store;
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% for each flight, generate a histogram of fraction of time at each level
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%compute absolute histogram
+PScale = Settings.Choices.PScale;
+Store = NaN(numel(Tracks.Prs),numel(PScale));
+for iFlight=1:1:numel(Tracks.Prs)
+  Store(iFlight,:) = hist(Tracks.Prs{iFlight}./100,PScale);
+end; clear iFlight Tracks
+
+
+%normalise to fraction of time...
+NormPrs = Store;
+Sigma = sum(NormPrs,2,'omitnan');
+for iFlight=1:1:numel(Sigma);
+  NormPrs(iFlight,:) = NormPrs(iFlight,:)./Sigma(iFlight);
+end; clear iFlight
+clear Sigma Store 
+
+%then find a modal pressure for each flight, including round-trips
+Meta.FlightData.ModalPrs = NaN(size(Meta.FlightData.FlightIndex));
+
+for iFlight=1:1:numel(Meta.FlightData.ModalPrs)
+  if Meta.FlightData.Direction(iFlight) == 'R'
+    Norm = NormPrs(Meta.FlightData.OriginalW(iFlight),:) + NormPrs(Meta.FlightData.OriginalE(iFlight),:);
+  else
+    Norm = NormPrs(Meta.FlightData.FlightIndex(iFlight),:);
+  end
+
+  [~,idx] = max(Norm,[],2);
+  Meta.FlightData.ModalPrs(iFlight) = PScale(idx);
+
+end
+clear iFlight Norm idx NormPrs PScale
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% now, regress this modal pressure against the climate indices
+%this follows the same logic as analysis_regression.m
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%split out by season
+%%%%%%%%%%%%%%%%%%%%
+
+%move tables to top level to keep as similar syntax as possible
+FlightData = Meta.FlightData; 
+FlightIndices = Indices.FlightIndices; 
+clear Meta Indices
+
+%and split the delays into seasons
+FlightData.SeasModPrs = FlightData.Delay; %copying this because I can't remember the syntax!
+for iFlight=1:1:numel(FlightData.ModalPrs);
+  FlightData.SeasModPrs(iFlight,:) = FlightData.ModalPrs(iFlight).*FlightData.InSeasons(iFlight,:);
+end; clear iFlight
+
+
+%%allocate storage
+%%%%%%%%%%%%%%%%%%%%
 
 %create storage matrices
 Reg = struct;
@@ -43,9 +102,9 @@ Fields = {'SE','T','P','N','R2'}; %these are the output fields we'll retain from
 for iF=1:1:numel(Fields); Reg.(Fields{iF}) = Reg.Est; end
 clear Fields iF
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% process
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%process
+%%%%%%%%%%%%
+
 
 
 %for each season and direction...
@@ -62,18 +121,17 @@ for iSeason=1:1:numel(Settings.Seasons.List)
 
     %hence, cut down the master table to just these entries
     FlightsInUse = Data(InThisSet,:);
-    % clear InThisSeason InThisDirection InThisSet
 
     %and to just the columns needed for the regression
-    ModelInput = table(splitvars(table(FlightsInUse.Delay)).(Settings.Seasons.List{iSeason})); 
-    ModelInput = renamevars(ModelInput,'Var1','Delay');
+    ModelInput = table(splitvars(table(FlightsInUse.SeasModPrs)).(Settings.Seasons.List{iSeason})); 
+    ModelInput = renamevars(ModelInput,'Var1','SeasModPrs');
     for iVar=1:1:numel(Settings.Indices.List)
       ModelInput = addvars(ModelInput,FlightsInUse.(Settings.Indices.List{iVar}), ...
                            'NewVariableNames',Settings.Indices.List{iVar});
     end; clear iVar
     
     %fit the linear model
-    mdl = fitlm(ModelInput,'ResponseVar','Delay');
+    mdl = fitlm(ModelInput,'ResponseVar','SeasModPrs');
 
     %store what we want
     Coefs = table2array(mdl.Coefficients);
@@ -96,11 +154,8 @@ Reg.SE  = Reg.SE  .* 2;
 
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% save regression results
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-save([Settings.Paths.DataDir,'/',Settings.ID,'_regressioncoefficients.mat'],'Reg')
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -115,7 +170,7 @@ set(gcf,'color','w')
 subplot = @(m,n,p) subtightplot (m, n, p, 0.04, 0.1, 0.1);
 Letters = 'abcdefghijklmnpqrstuvwxyz';
 
-XLimit = 15; %minutes
+XLimit = 20; %hPa
 
 for iSeason=1:1:numel(Settings.Seasons.List)
   for iDirection=1:1:numel(Settings.Choices.Directions)
@@ -126,14 +181,14 @@ for iSeason=1:1:numel(Settings.Seasons.List)
     cla
     hold on; box on; grid on;
     axis([-XLimit,XLimit, 0.5, numel(Settings.Indices.List)+0.5])
-    set(gca,'ydir','reverse')
+    set(gca,'ydir','reverse','xdir','reverse')
 
     %handle x axis and vertical gridlines
     if     iSeason == 1; set(gca,'xaxislocation','top');
     else                 set(gca,'xaxislocation','bottom'); 
     end
     if iSeason ~= 1 & iSeason ~= numel(Settings.Seasons.List); set(gca,'xtick',[]); 
-    else; xlabel('Delay [minutes]');
+    else; xlabel('Modal Pressure Change [hPa]');
     end
     plot([1,1].*min(get(gca,'xlim')),minmax(get(gca,'ylim')),'w-','linewi',2)
     plot([1,1].*max(get(gca,'xlim')),minmax(get(gca,'ylim')),'w-','linewi',2)    
@@ -145,9 +200,8 @@ for iSeason=1:1:numel(Settings.Seasons.List)
     for iY=1:1:numel(Settings.Indices.List);
       x = [-1,1,1,-1].*1000;
       y = ([-1,-1,1,1].*0.15)+iY;
-      % patch(x,y,Settings.Indices.Colours.(Settings.Indices.List{iY}),'edgecolor','none','facealpha',0.55)
-      % plot([-1,1].*1000,[1,1].*iY,'-','color',Settings.Indices.Colours.(Settings.Indices.List{iY}),'linewi',1,'linestyle',':');
-      plot([-1,1].*1000,[1,1].*iY,'-','color',[1,1,1].*0.6,'linewi',1,'linestyle',':');
+      patch(x,y,Settings.Indices.Colours.(Settings.Indices.List{iY}),'edgecolor','none','facealpha',0.55)
+      plot([-1,1].*1000,[1,1].*iY,'-','color',Settings.Indices.Colours.(Settings.Indices.List{iY}),'linewi',1,'linestyle',':');
     end; clear iY
 
 
@@ -163,8 +217,8 @@ for iSeason=1:1:numel(Settings.Seasons.List)
     for iIndex=1:1:numel(Settings.Indices.List)
 
       %get value, error and significance
-      Value = Reg.Est(iDirection,iSeason,iIndex)./60; %minutes
-      SE    = Reg.SE( iDirection,iSeason,iIndex)./60;
+      Value = Reg.Est(iDirection,iSeason,iIndex); %minutes
+      SE    = Reg.SE( iDirection,iSeason,iIndex);
       p     = Reg.P(  iDirection,iSeason,iIndex);
 
       %if it's outside the plot range, scale until it is
@@ -191,15 +245,11 @@ for iSeason=1:1:numel(Settings.Seasons.List)
       else         LW = 1; Colour = 'w';
       end
 
-      % plot(Value,iIndex,Settings.Indices.Symbols.(Settings.Indices.List{iIndex}),...
-      %      'color', 'k', 'linewi',LW, ...
-      %      'markerfacecolor',Colour, ...
-      %      'markersize',     10)
-      
-      plot(Value,iIndex,'o',...
+      plot(Value,iIndex,Settings.Indices.Symbols.(Settings.Indices.List{iIndex}),...
            'color', 'k', 'linewi',LW, ...
            'markerfacecolor',Colour, ...
            'markersize',     10)
+
     end; clear iIndex
 
 
@@ -218,3 +268,4 @@ for iSeason=1:1:numel(Settings.Seasons.List)
 
   end; clear iDirection
 end; clear iSeason
+

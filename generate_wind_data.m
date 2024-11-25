@@ -8,6 +8,9 @@ function [] = generate_wind_data(Settings)
 %  1. pointwise U and V along each flight track
 %  2. maps of U and V every three hours
 %
+%tropopause height and stratopause pressure will also be extracted, as this 
+%is computationally efficient to get here and might be needed
+%
 %Corwin Wright, c.wright@bath.ac.uk, 2024/09/04
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -53,6 +56,7 @@ for iDay=1:1:numel(FullDateRange) %note that by definition this starts one day b
   List.Lat  = yi(:);
   List.Time = ti(:);
   List.Fid  = zeros(size(List.Time)); %'file ID' - 0 for map points
+  List.P    = ones( size(List.Time)).*250; %pressure level for the maps
   clear t xi yi ti
 
   %% generate list of points needed for FLIGHTS
@@ -66,6 +70,8 @@ for iDay=1:1:numel(FullDateRange) %note that by definition this starts one day b
     %add all flights starting on this day into memory
     for iFile=1:1:numel(FlightsThisDay)
 
+      if FlightData.DataSource(FlightsThisDay(iFile)) ~= "IAGOS"; continue; end
+
       %I generated the flight list on my laptop but want to run on 0184,
       %so this line just switches filepaths if needed
       FilePath = FlightData.FilePath(FlightsThisDay(iFile));
@@ -78,38 +84,42 @@ for iDay=1:1:numel(FullDateRange) %note that by definition this starts one day b
       List.Lon  = [List.Lon; Data.lon];
       List.Time = [List.Time;FullDateRange(iDay)+Data.UTC_time/86400];
       List.Fid  = [List.Fid;ones(size(Data.lon)).*FlightData.FlightIndex(FlightsThisDay(iFile))];
-
+      List.P    = [List.P;Data.air_press_AC./100]; % Use values from the aircraft barometer for pressure level
 
     end
+  else
+    continue; 
   end
   clear FlightsThisDay iFile FilePath Data
 
-
-  %% get winds at every point. Assume an altitude of 250hPa.
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+  %% get winds at every point. 
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+try
   %drop bad points for the wind interpolant, but put back later
   Bad = find(List.Lon < -180 | List.Lon > 180  ...
            | List.Lat <  -90 | List.Lat >  90  ...
            | List.Time < FullDateRange(iDay)-1 ...
            | List.Time > FullDateRange(iDay)+2 ...
-           | isnan(List.Lon) | isnan(List.Lat) | isnan(List.Time));
+           | List.P    > 1200                  ...
+           | isnan(List.Lon) | isnan(List.Lat) | isnan(List.Time) | isnan(List.P));
   Good = 1:1:numel(List.Lon); Good(Bad) = [];
   List = reduce_struct(List,Good,{},0);
 
   %get the winds
-  Wind = get_context(List.Lon,List.Lat,'TimePoints',List.Time,'Pressure',250,'Wind',true);
+  Wind = get_context(List.Lon,List.Lat,'TimePoints',List.Time,'Pressure',List.P,'Wind',true,'PressureAsPoints',true,'Pauses',true);
 
   %if we removed any points, put them back as gaps in the data
   if numel(Bad) > 0
     NewList = spawn_uniform_struct({'Lon','Lat','Time','Fid'},[numel(Good)+numel(Bad),1]);
-    NewWind = spawn_uniform_struct({'U','V'},                 [numel(Good)+numel(Bad),1]);
+    NewWind = spawn_uniform_struct({'U','V','TP','SP'},       [numel(Good)+numel(Bad),1]);
     NewList.Lon( Good) = List.Lon;
     NewList.Lat( Good) = List.Lat;
     NewList.Time(Good) = List.Time;
     NewList.Fid        = List.Fid; %this is used for indexing below so must stay the same as the original
     NewWind.U(   Good) = Wind.U;
     NewWind.V(   Good) = Wind.V;
+    NewWind.TP(  Good) = Wind.Tropopause;
+    NewWind.SP(  Good) = Wind.Stratopause;    
 
     List = NewList; clear NewList
     Wind = NewWind; clear NewWind
@@ -124,21 +134,25 @@ for iDay=1:1:numel(FullDateRange) %note that by definition this starts one day b
     WindStore.Lat = Settings.Choices.WindMap.LatScale;
     WindStore.Lon = Settings.Choices.WindMap.LonScale;
   end
-  WindStore.U(:,:,:,iDay) = reshape(Wind.U(List.Fid == 0),sz);
-  WindStore.V(:,:,:,iDay) = reshape(Wind.V(List.Fid == 0),sz);
+  WindStore.U( :,:,:,iDay) = reshape(Wind.U( List.Fid == 0),sz);
+  WindStore.V( :,:,:,iDay) = reshape(Wind.V( List.Fid == 0),sz);
+  WindStore.TP(:,:,:,iDay) = reshape(Wind.Tropopause( List.Fid == 0),sz);
+  WindStore.Sp(:,:,:,iDay) = reshape(Wind.Stratopause(List.Fid == 0),sz);  
 
   %pull out flight traces and store
   if any(List.Fid ~= 0);
     Fids = unique(List.Fid(List.Fid ~= 0));
     for iFlight=1:1:numel(Fids)
       idx = find(List.Fid == Fids(iFlight));
-      UStore{Fids(iFlight)} = Wind.U(idx);
-      VStore{Fids(iFlight)} = Wind.V(idx);
+      UStore{ Fids(iFlight)} = Wind.U( idx);
+      VStore{ Fids(iFlight)} = Wind.V( idx);
+      TPStore{Fids(iFlight)} = Wind.Tropopause(idx);
+      SPStore{Fids(iFlight)} = Wind.Stratopause(idx);
     end; clear iFlight idx
   end
 
   clear Wind List Good Bad Fids sz
-
+catch; end
 
 
 
@@ -151,7 +165,7 @@ textprogressbar('!')
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% save results
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-save([Settings.Paths.DataDir,'/',Settings.ID,'_flightwinds.mat'],'UStore','VStore')
+save([Settings.Paths.DataDir,'/',Settings.ID,'_flightwinds.mat'],'UStore','VStore','TPStore','SPStore')
 save([Settings.Paths.DataDir,'/',Settings.ID,'_windmaps.mat'],'WindStore')
 
 
