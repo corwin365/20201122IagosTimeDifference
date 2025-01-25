@@ -16,8 +16,8 @@ clear all
 
 %what settings are we using?
 % SettingsID = 'basic_annual';
-SettingsID = 'basic_noannual';
-% SettingsID = 'both';
+% SettingsID = 'basic_noannual';
+SettingsID = 'honolulu_annual';
 
 %load them
 Settings = load(['data/',SettingsID,'.mat']);
@@ -31,10 +31,10 @@ clear SettingsID  %it's contained in the file we loaded already
 % %settings choices locked in here: Choices.Airports
 % generate_geolocation(Settings);
 % 
+% 
 % %generate IAGOS data
 % %settings choices locked in here: Choices.TimeRange, Choices.MinDist
 % if sum(ismember(Settings.Choices.DataSets,1)) | sum(ismember(Settings.Choices.DataSets,3)); import_iagos_data(Settings); end
-% 
 % 
 % %generate data from Ed?
 % %settings choices locked in here: [none]
@@ -43,11 +43,11 @@ clear SettingsID  %it's contained in the file we loaded already
 % %generate merged dataset
 % %settings choices locked in by here: Choices.DataSets
 % generate_merged_data(Settings);
-% 
+
 % %extract full flight traces
 % %settings choices locked in by here: [none]
 % generate_track_data(Settings);
-% 
+
 % %generate ERA5 wind data
 % %settings choices locked in by here: Choices.WindMap
 % generate_wind_data(Settings);
@@ -73,10 +73,10 @@ clear SettingsID  %it's contained in the file we loaded already
 % %settings choices locked in here: Indices
 % process_climate_indices_v3(Settings);
 % 
-% % compute optimal lags for each index
+% %compute optimal lags for each index
 % %settings choices locked in here: [none]
 % process_optimal_lags(Settings);
-% 
+
 % %cost of each minute of delay, in both CO2 and USD, and total mber of flights over the Atlantic
 % %settings choices locked in here: [none]
 % process_scalefactors(Settings);
@@ -95,14 +95,14 @@ clear SettingsID  %it's contained in the file we loaded already
 % %settings choices locked in here: [none]
 % analysis_index_stat_tests(Settings)
 
-% %data coverage and climate indices
-% %settings choices locked in here: [none]
+% % %data coverage and climate indices
+% % %settings choices locked in here: [none]
 % analysis_coverageandindices(Settings)
 % 
 % %linear trend analysis by season
 % %settings choices locked in here: [none]
 % analysis_linear(Settings)
-% 
+
 % %linear trend analysis by airline
 % %settings choices locked in here: [none]
 % analysis_linear_byairline(Settings)
@@ -118,8 +118,8 @@ clear SettingsID  %it's contained in the file we loaded already
 %% data analysis - KDFs
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% %index-split KDFs
-% %settings choices locked in here: Choices.KDFSplit
+%index-split KDFs
+%settings choices locked in here: Choices.KDFSplit
 % analysis_indexsplit(Settings);
 
 
@@ -128,12 +128,13 @@ clear SettingsID  %it's contained in the file we loaded already
 
 % % linear regression
 % %settings choices locked in here: [none]
-% analysis_regression(Settings);
+analysis_regression(Settings);
 
-%cost implications, in CO2 and USD
-% %settings choices locked in here: [none]
-%requires analysis_regression to have been run to generate necessary coefficients
-analysis_cost(Settings);
+% %cost implications, in CO2 and USD
+% % %settings choices locked in here: [none]
+% %requires analysis_regression to have been run to generate necessary coefficients
+% analysis_cost_histo(Settings);
+% analysis_cost(Settings);
 
 
 %% data analysis - ERA5 comparisons (not currently working)
@@ -146,8 +147,8 @@ analysis_cost(Settings);
 %% data analysis - cruise height impacts
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% % cruise height analysis
-% %settings choices locked in here: Choices.ZScale
+% cruise height analysis
+%settings choices locked in here: Choices.ZScale
 % analysis_cruiseheight(Settings);
 
 % % cruise pressure analysis
@@ -157,3 +158,9 @@ analysis_cost(Settings);
 % % check if the tropopause is correlated with flight level
 % %settings choices locked in here: [none]
 % analysis_cruise_v_tp(Settings);
+
+
+
+
+
+% analysis_frac_strat_trop(Settings);

@@ -1,4 +1,4 @@
-function analysis_cost(Settings)
+function analysis_cost_histo(Settings)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -9,9 +9,9 @@ function analysis_cost(Settings)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-disp('+++++++++++++++++++++++++++++++')
-disp('Regression imputed cost analysis')
-disp('+++++++++++++++++++++++++++++++')
+disp('++++++++++++++++++++++++++++++++++++++++++++')
+disp('Regression imputed cost analysis - histogram')
+disp('++++++++++++++++++++++++++++++++++++++++++++')
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -186,172 +186,104 @@ CostSE = CostSE ./ 1e6  .* (365/12);
 % CostTypes = {'Cost_Co2','Cost_Fuel','Cost_Co2_Fixed','Cost_Fuel_Fixed'};
 
 
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% time plots - postprocessing and plotting
+%% violin plots - postprocessing and plotting
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+% %choose a direction
+% Direction = find(contains(Settings.Choices.Directions, 'R'));
 
-%for each month, find the sum of the daily effects of each index
-%we're only going to use the all-seasons estimators again
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%choose a season
+Season = find(contains(Settings.Seasons.List, 'All'));
 
-%create a monthly timescale and a daily timescale
-[yy,~,~] = datevec(min(Settings.Choices.TimeRange));
-MTime = datenum(yy,(1:1:100*12),1);
-MTime(MTime > max(Settings.Choices.TimeRange)) = [];
-DTime = Settings.Choices.TimeRange(1):1:Settings.Choices.TimeRange(2);
-clear yy
+%choose a number of kdf fitting centres
+%this is an initial value which wil be slightly adjusted to produce bins of round-number widths
+nbins = 100;
 
-
-%bin the flightwise cost estimates onto the daily timescale. Remember, these are scaled to represent MONTHLY values already
-DailyCosts = NaN(numel(DTime),numel(Indices),numel(Settings.Choices.Directions),numel(CostTypes));
-for iI=1:1:numel(Indices);
-  for iDir=1:1:numel(Settings.Choices.Directions)
-    for iType=1:1:numel(CostTypes)
-      DailyCosts(:,iI,iDir,iType) = bin2matN(1,FlightData.Date,squeeze(Cost(:,iDir,find(contains(Settings.Seasons.List, 'All')),iI,iType)),DTime,'@nanmean');
-      DailyCosts(:,iI,iDir,iType) = fillmissing(DailyCosts(:,iI,iDir,iType),'nearest');
-    end; clear iType
-  end; clear iDir
-end; clear I
-
-MonthlyCosts = NaN(numel(MTime),numel(Indices),numel(Settings.Choices.Directions),numel(CostTypes));
-for iMonth=1:1:numel(MTime)-1
-  idx = inrange(DTime,MTime([iMonth,iMonth+1]));
-  MonthlyCosts(iMonth,:,:,:) = nanmean(DailyCosts(idx,:,:,:),1);
-end; clear iMonth idx
-clear DailyCosts
-
-%prepare the data for a stacked histogram
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-%first we need to drop the sum row
-idx = find(Indices ~= "Sum");
-MonthlyCosts = MonthlyCosts(:,idx,:,:);
-clear idx
-
-%ok. now for each month, generate a POSITIVE and NEGATIVE stack
-PosCosts = MonthlyCosts; PosCosts(PosCosts <  0) = 0;
-NegCosts = MonthlyCosts; NegCosts(NegCosts >= 0) = 0;
-
-
-%overinterpolate in time to make it look (correctly) blocky
-PosCosts = interp_1d_ndims(MTime,PosCosts,DTime,1,'nearest');
-NegCosts = interp_1d_ndims(MTime,NegCosts,DTime,1,'nearest');
-
-
-%% plot the data!!
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+%prepare figure
 clf
-subplot = @(m,n,p) subtightplot (m, n, p, 0.05, 0.08, 0.15);
-hold on
+subplot = @(m,n,p) subtightplot (m, n, p, [0.07,0.01], 0.06, 0.15);
 k = 0;
-Letters = 'abcdef';
+
+%loop over types of cost
+ctlist = [4] %[3,4];
+for Direction=1:1:3;
+for ict = 1:1:numel(ctlist)
+
+  %get costs
+  c = squeeze(Cost(:,Direction,Season,:,ctlist(ict)));
+
+  % %rebase to zero median
+  % for iInd=1:1:numel(Indices)
+  %   c(:,iInd) = c(:,iInd) - nanmedian(c(:,iInd));
+  % end
 
 
-for iDir=1:1:3
-  % CostTypes = {'Cost_Co2','Cost_Fuel','Cost_Co2_Fixed','Cost_Fuel_Fixed'};
-  for iCost = 2;%[1,2]
+  %loop over indicex
+  for iInd=[numel(Indices),1:1:numel(Indices)-1];
+
+    %define x-axis, using a fixed number of bins across the actual data
+    x = linspace(min(c(:,iInd)),max(c(:,iInd)),nbins);
+
+    % %prepare KDF
+    % kd = pdf(fitdist(c(:,iInd),'kernel','Kernel','normal'),x);
+    kd = hist(c(:,iInd),x);
+    kd = kd./max(kd);
+
+    %prepare panel
     k = k+1;
-    subplot(3,1,k)
+    subplot(6,numel(Indices),k)
+    grid on; hold on; box on;
+    axis([[-1,1].*max(abs(x)) [-1,1].*1.25.*ceil(max(kd))])
 
 
-    %produce a background year pattern
-    for iYear=1994:2:2024
-      patch(datenum([0,1,1,0]+iYear,1,1),[-1,-1,1,1].*999,[1,1,1].*0.9,'edgecolor','none')
+    %get colour
+    if strcmp(Indices{iInd},'Sum'); colour = [102,51,0]./255;%'k';
+    else                            colour = Settings.Indices.Colours.(Indices{iInd});
     end
 
+    if ctlist(ict) == 1 | ctlist(ict) == 3; set(gca,'XAxisLocation','top'); end
 
 
-    TheMax = 0;
-    IndexOrder = [4,3,1,2]; % this forces the order TSI - QBO - ENSO - NAO, i.e. slowest-vaerying to fastest
-    for iInd = numel(IndexOrder):-1:1
-      for iPosNeg=1:2;
-        switch iPosNeg
-          case 1; Data = PosCosts;
-          case 2; Data = NegCosts;
-        end
-        %colour for this index
-        colour = Settings.Indices.Colours.(Indices{IndexOrder(iInd)});
-
-        %sumcosts
-        ThisSet = sum(Data(:,IndexOrder(1:iInd),iDir,iCost),2);
-        if nanmax(abs(ThisSet)) > TheMax; TheMax = nanmax(abs(ThisSet)); end
-
-        %generate and plot patch
-        x = [min(DTime),DTime,max(DTime)];
-        y = [0;ThisSet;0]';
-        Good = find(~isnan(x+y));
-
-        % patch(x(Good),y(Good),'w',   'edgecolor','none','facealpha',1)  %this is to stop the colours muddying together  
-        patch(x(Good),y(Good),colour,'edgecolor',colour,'facealpha',1,'linewi',0.1)
-        hold on
+    %plot the violin
+    patch([x,x(end:-1:1)],[kd,-kd(end:-1:1)],colour,'linewi',1,'facealpha',0.4,'edgecolor',colour);
+    xlabel([CostUnits{ctlist(ict)},' per month'])
 
 
-      end; clear iPosNeg
+    %overlay a box plot
+    prc = prctile(c(:,iInd),[2.5,18,50,82,97.5]);
+    for iPrc=[2,4]; plot([1,1].*prc(iPrc),[-1,1].*0.25,'k-');end
+    for iPrc=[1,5]; plot([1,1].*prc(iPrc),[-1,1].*0.15,'k-');end
+    plot(prc([2,4]),[1,1].*0.25,'k-');  plot(prc([2,4]),-[1,1].*0.25,'k-')
+    plot(prc([3,3]),[-1,1].*0.25,'k-','linewi',3);
+    plot(prc([1,5]),[0,0],'k-')
 
-    end; clear iInd
-    ylim([-1,1].*1.05.*TheMax)
-
-    %vertical
-    Ratio = FixedFuelPrice .* mean(MasterCost.GallonsPerMinute)./ mean(MasterCost.Co2PerMinute);
-    switch iDir
-      case 1; 
-        set(gca,'ytick',[-75:25:75]);
-        ylim([-1,1].*75)
-        for iY=-75:25:75; text(datenum(2024,4,30),iY,num2str(round(iY.*Ratio.*10)./10),'HorizontalAlignment','left','VerticalAlignment','middle'); end
-      case 2; 
-        set(gca,'ytick',[-15: 5:15]);
-        ylim([-1,1].*15)
-        for iY=-15:5:15; text(datenum(2024,4,30),iY,num2str(round(iY.*Ratio.*10)./10),'HorizontalAlignment','left','VerticalAlignment','middle'); end
-      case 3; 
-        set(gca,'ytick',[-75:25:75]);
-        ylim([-1,1].*75)
-        for iY=-75:25:75; text(datenum(2024,4,30),iY,num2str(round(iY.*Ratio.*10)./10),'HorizontalAlignment','left','VerticalAlignment','middle'); end
-
-    end
+    %print for numbers in text
+    disp('================================')
+    disp([Settings.Choices.Directions{Direction},'  ',Indices{iInd}])
+    disp(['2stdev: ',num2str(round(prc([1,5]),2,'decimals')),'   ',num2str(round(range(prc([1,5])),2,'decimals'))])
+    disp(['range : ',num2str(round(minmax(x),2, 'decimals')),'   ',num2str(round(range(minmax(x)),2,'decimals'))])
 
 
 
-    %the first few months only have a small number of flights and hence a lot of filled missing values - truncate the graph
-    xlim([datenum(1994,8,1),datenum(2024,4,1)])    
-    % datetick('x','keeplimits')
-    [yy,~,~] = datevec(datenum(1994:2:2024,6,20));
-    set(gca,'xtick',datenum(1994:2:2024,6,20),'XTickLabel',yy)
+    %clean up axes
+    set(gca,'yticklabel',{})
+    % set(gca,'xticklabel',{})
+
+    %name
+    text(-max(abs(x)),-1.2,[' ',Indices{iInd}],'HorizontalAlignment','left','VerticalAlignment','bottom')
 
 
-    %overlay sum as a curve
-    Sigma = PosCosts+NegCosts;
-    Sigma = sum(Sigma(:,:,iDir,iCost),2);
-    plot(DTime,smoothn(inpaint_nans(Sigma),31),'k-','LineWidth',0.5)
-
-    % text(datenum(2023,6,1),0.9.*max(get(gca,'ylim')),['Total: ',num2str(round(nansum(Sigma./365.*12))),' ',CostUnits{iCost},' or ',num2str(round(nansum(Sigma./365.*12.*Ratio))),' M USD'],'HorizontalAlignment','right','fontsize',12)
-
-
-    text(datenum(1994,10,1),0.9.*max(get(gca,'ylim')),['(',Letters(k),') ',Settings.Choices.Directions{iDir}])
-
-    switch iCost
-      case 1; ylabel('CO2 [kT]')
-      case 2; ylabel('Fuel cost [million USD]')
-    end
-
-        %tidy up
-        box on; grid on;
-        set(gca,'layer','top')
-        if     iDir == 1; set(gca,'xaxislocation','top'); 
-        elseif iDir == 2; set(gca,'xticklabel',{});
-        else              set(gca,'xaxislocation','bottom'); 
-        end
-
+    % %label binsize
+    % text(max(x),0.9.*ceil(max(kd)),[num2str(binsize),CostUnits{ctlist(ict)},' bins'],'HorizontalAlignment','right','FontSize',12)
 
     drawnow
 
 
-  end
+  end; clear iIndex
 end
-
-
-
+end
 
 
 stop

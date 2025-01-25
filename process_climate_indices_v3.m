@@ -96,7 +96,9 @@ for iIndex=1:1:numel(Settings.Indices.List)
       b = interp1(TSI.Time,TSI.TSI,TimeScale); 
       clear TSI
     case 'Time'
-      b = TimeScale; 
+      %this looks weird, as we needs a small correction to put the correct part into -1 to 1, since
+      %we allowed some extra for circshifting on the master timescale defined above
+      b = interp1(minmax(TimeScale),Settings.Choices.TimeRange,TimeScale); 
     case 'SeaIce'
       SeaIce = readmatrix([Root,'/N_seaice_extent_daily_v3.0.csv']);
       t = datenum(SeaIce(:,1),SeaIce(:,2),SeaIce(:,3));
@@ -225,13 +227,28 @@ for iDir=1:1:numel(Settings.Choices.Directions)
       %compute the necessary stats from the daily data
       RangeStore.(Settings.Choices.Directions{iDir}).(Settings.Indices.List{iIndex}) = prctile(IndexStore.Raw.(Settings.Choices.Directions{iDir}).(Settings.Indices.List{iIndex}),Settings.Indices.IndexRange);
 
-      %apply the stats to normalise the data
-      a = Daily.(Settings.Indices.List{iIndex});
-      a = a./range(RangeStore.(Settings.Choices.Directions{iDir}).(Settings.Indices.List{iIndex}));
-      a = a-min(a);
-      a= (a.*2)-1;
-      Daily.(Settings.Choices.Directions{iDir}).(Settings.Indices.List{iIndex}) = a;
+      %choose normalisation type
+      if strcmp(Settings.Indices.NormType,'r') %range normalisation
 
+        %apply the stats to normalise the data
+        a = Daily.(Settings.Indices.List{iIndex});
+        a = a./range(RangeStore.(Settings.Choices.Directions{iDir}).(Settings.Indices.List{iIndex}));
+        a = a-min(a);
+        a= (a.*2)-1;
+        Daily.(Settings.Choices.Directions{iDir}).(Settings.Indices.List{iIndex}) = a;
+
+      elseif strcmp(Settings.Indices.NormType,'z'); %z-score normalise
+
+        a = Daily.(Settings.Indices.List{iIndex});
+        m = mean(a,'omitnan');
+        s = std( a,'omitnan');
+        Daily.(Settings.Choices.Directions{iDir}).(Settings.Indices.List{iIndex}) = ((a - m)./s);
+
+      else
+
+        disp('Error: invalid normalisation option set for indices')
+        stop
+      end
     end; clear iIndex
 
 

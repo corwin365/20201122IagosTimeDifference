@@ -149,8 +149,10 @@ for iDirection=1:1:numel(Settings.Choices.Directions)
     [p,S] = polyfit(Months(Good),MedianSeries(Good),1);
     y = polyval(p,Months(Good));
     plot(Months(Good),y,'linewi',LineWidth,'color',LineColour,'LineStyle',LineStyle)
-    text(datenum(1989+6.*iSeason,6,1),min(gca().YLim)+0.02.*range(gca().YLim),[num2str(round(p(1)*365*10,2,'significant')),' min/dec'], ...
-         'VerticalAlignment','bottom','color',LineColour,'FontSize',14)
+    % text(datenum(1989+6.*iSeason,6,1),min(gca().YLim)+0.02.*range(gca().YLim),[num2str(round(p(1)*365*10,2,'significant')),' min/dec'], ...
+    %      'VerticalAlignment','bottom','color',LineColour,'FontSize',14)
+    text(datenum(1989+6.*iSeason,6,1),min(gca().YLim)+0.02.*range(gca().YLim),[num2str(round(p(1)*365*10,1,'decimals')),' min/dec'], ...
+         'VerticalAlignment','bottom','color',LineColour,'FontSize',14)    
 
 
     %monthnames

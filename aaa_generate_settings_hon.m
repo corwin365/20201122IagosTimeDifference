@@ -17,7 +17,7 @@ clear all
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %name of this set of analyses
-SettingsID = 'basic_noannual';
+SettingsID = 'honolulu_annual';
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %file paths to the data and climate indices
@@ -60,7 +60,7 @@ Choices.MinPairDistance = 1; %days
 Choices.MaxDeviation = 20; %percent. Set to 100 or greater to not filter
 
 %how should we define the airports used
-Choices.Airports = 'list'; %'list' for whitelist definition, or 'geo' for geographic definition
+Choices.Airports = 'geo'; %'list' for whitelist definition, or 'geo' for geographic definition
 
 %how large a gap in an IAGOS data record is acceptable before we discard it?
 Choices.Maxdt = 15*60; %seconds
@@ -94,8 +94,8 @@ Choices.ApplyLags = 1;
 Choices.MaxLag = 365; % days
 
 %what indices should we use?
-% Indices.List = {'Annual','ENSO','NAO','QBO','Time','TSI'};
-Indices.List = {'ENSO','NAO','QBO','Time','TSI'};
+Indices.List = {'Annual','ENSO','NAO','QBO','Time','TSI'};
+% Indices.List = {'ENSO','NAO','QBO','Time','TSI'};
 
 %what type of normalisation should we use?
 Indices.NormType = 'r'; %'z' for z-score, 'r' for range (set below)
@@ -191,8 +191,12 @@ Airports.List.Eur = {'AGA','AGP','AHO','AMM','AMS','ATH','AYT','BCN','BEY','BOD'
 %geographic approach.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-Airports.Bounds.NA  = [-95,-65,30,50]; %lonmin,lonmax,latmin,latmax
-Airports.Bounds.Eur = [-10, 20,35,60]; 
+% Airports.Bounds.NA  = [-95,-65,30,50]; %lonmin,lonmax,latmin,latmax
+% Airports.Bounds.Eur = [-10, 20,35,60]; 
+
+%values for Hawaii ('NA') vs US west coast ('Eur') - we're stuck with the nomenclature we chose, I guess...
+Airports.Bounds.NA  = [-160,-150,15,25]; %lonmin,lonmax,latmin,latmax
+Airports.Bounds.Eur = [-130,-115,30,70]; 
 
 
 

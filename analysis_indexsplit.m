@@ -24,7 +24,6 @@ if Settings.Choices.ApplyLags == 0; load([Settings.Paths.DataDir,'/',Settings.ID
 else;                               load([Settings.Paths.DataDir,'/',Settings.ID,'_laggedindices.mat'])
 end
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% process
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -208,15 +207,14 @@ for iSeason = 1%1:1:numel(Settings.Seasons.List)
       plot(MaxTop,-0.0005,'^','color','k','markerfacecolor','r','markersize',10,'clipping','off')
       plot(MaxBot,-0.0005,'v','color','k','markerfacecolor','b','markersize',10,'clipping','off')
 
-
-
+      % %print out numeric values for use in manuscript
+      % [Settings.Choices.Directions{iDirection},'  ',Settings.Indices.List{iIndex},'  ',num2str(MaxTop),'   ',num2str(MaxBot)]
       drawnow
     end
   end
 end
 
 clear iSeason iDirection iIndex
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% output results

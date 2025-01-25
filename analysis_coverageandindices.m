@@ -105,14 +105,21 @@ for iPlane=1:1:numel(Planes)
     %compute size of circle to plot
     r = ceil(sqrt(Basis.*NPoints./TheMax)./pi);
     plot(TimeScale(iMonth),1.*iPlane,'o','color','k','markersize',r,'markerfacecolor',Colours(iPlane,:))
+   
+    % if NPoints == max(Results(:));
+    %   Planes{iPlane}
+    %   datestr(TimeScale(iMonth))
+    % 
+    % end
 
+    
   end
 
   %put total at end of row
   N = nansum(Results(iPlane,:));
   PC = nansum(Results(iPlane,:))./Sigma.*100;
   text(max(DateIndices.Date)+110,iPlane,num2str(N),'fontsize',11)
-  if ~strcmp(Planes{iPlane},'Round');  text(max(DateIndices.Date)+420,iPlane,['(',num2str(round(PC,2,'significant')),'%)'],'fontsize',11); end
+  if ~strcmp(Planes{iPlane},'Round');  text(max(DateIndices.Date)+420,iPlane,['  (',num2str(round(PC,2,'significant')),'%)'],'fontsize',11); end
 end
 clear iPlane iMonth Colours
 set(gca,'ytick',1:1:numel(Planes),'yticklabel',Planes,'ydir','reverse','xtick',datenum(1994:1:2023,1,1),'XTickLabel',{})
@@ -124,9 +131,10 @@ for iR=[1,10,20,30,40,50,TheMax,TheFullMax]
     r = ceil(sqrt(Basis.*iR./TheMax)./pi);
     plot(datenum(2015+k,1,1),-1,'o','color','k','markersize',r,'markerfacecolor',[1,1,1].*0.8,'clipping','off')
     text(datenum(2015+k,1,1),-2,num2str(iR),'clipping','off','horizontalalignment','center')
-    k = k+0.65;    
+    k = k+1;%0.65;    
 end
 text(datenum(2015,1,1)-150,-2,'Flights in month:','HorizontalAlignment','right')
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

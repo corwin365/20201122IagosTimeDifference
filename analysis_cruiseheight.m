@@ -321,3 +321,5 @@ for iSeason=1:1:numel(Settings.Seasons.List)
 
   end; clear iDirection
 end; clear iSeason
+
+stop
