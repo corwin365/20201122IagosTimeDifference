@@ -17,7 +17,7 @@ clear all
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %name of this set of analyses
-SettingsID = 'basic_noannual';
+SettingsID = 'woollings_noannual';
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %file paths to the data and climate indices
@@ -67,6 +67,8 @@ Choices.Maxdt = 15*60; %seconds
 Choices.MaxdLat = 10; %degrees. Need to be generous as some flights get near the pole.
 Choices.MaxdLon = 10; %degrees
 
+Choices.GroupingPeriod = 5; %number of days to do block analysis in for statistical power tests
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %how should we split the data into "seasons"?
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -95,8 +97,9 @@ Choices.MaxLag = 365; % days
 
 %what indices should we use?
 % Indices.List = {'Annual','ENSO','NAO','QBO','Time','TSI'};
-Indices.List = {'ENSO','NAO','QBO','Time','TSI'};
-
+Indices.List = {'ENSO','NAO','QBO','Time','TSI','JetLat','JetSpeed'};
+% Indices.List = {'JetLat','JetSpeed'};
+% 
 %what type of normalisation should we use?
 Indices.NormType = 'r'; %'z' for z-score, 'r' for range (set below)
 
@@ -122,33 +125,37 @@ Indices.SmoothLength = 7;
 Indices.DoNotSmooth = {'NAO'};
 
 %colours to use for the indices in plots
-Indices.Colours.ENSO    = [ 57,159,228]./255;
-Indices.Colours.Fuel    = [  0,  0,  0]./255;
-Indices.Colours.HadCRUT = [255,178,102]./255;
-Indices.Colours.NAO     = [ 46,148,130]./255;
-Indices.Colours.NAM     = [ 69,174, 98]./255;
-Indices.Colours.QBO     = [255,209,107]./255;
-Indices.Colours.SeaIce  = [152, 51, 91]./255;
-Indices.Colours.u1060   = [255,102,178]./255;
-Indices.Colours.TSI     = [196, 66, 79]./255;
-Indices.Colours.SSTs    = [204,204,0]./255;
-Indices.Colours.Time    = [1,1,1].*0.6;
-Indices.Colours.Annual  = [113, 69,168]./255;
-Indices.Colours.AMO     = [255,102,178]./255;
+Indices.Colours.ENSO     = [ 57,159,228]./255;
+Indices.Colours.Fuel     = [  0,  0,  0]./255;
+Indices.Colours.HadCRUT  = [255,178,102]./255;
+Indices.Colours.NAO      = [ 46,148,130]./255;
+Indices.Colours.NAM      = [ 69,174, 98]./255;
+Indices.Colours.QBO      = [255,209,107]./255;
+Indices.Colours.SeaIce   = [152, 51, 91]./255;
+Indices.Colours.u1060    = [255,102,178]./255;
+Indices.Colours.TSI      = [196, 66, 79]./255;
+Indices.Colours.SSTs     = [204,204,0]./255;
+Indices.Colours.Time     = [1,1,1].*0.6;
+Indices.Colours.Annual   = [113, 69,168]./255;
+Indices.Colours.AMO      = [255,102,178]./255;
+Indices.Colours.JetLat   = [   0,  0,  0]./255;
+Indices.Colours.JetSpeed = [   0,  0,  0]./255;
 
 %marker symbols to use for the indices in plots
-Indices.Symbols.ENSO    = 's';
-Indices.Symbols.Fuel    = 'o';
-Indices.Symbols.HadCRUT = 'o';
-Indices.Symbols.NAO     = 'v';
-Indices.Symbols.NAM     = 'o';
-Indices.Symbols.QBO     = '^';
-Indices.Symbols.SeaIce  = 'o';
-Indices.Symbols.TSI     = 's';
-Indices.Symbols.SSTs    = 'o';
-Indices.Symbols.Time    = 'd';
-Indices.Symbols.Annual  = 'o';
-Indices.Symbols.AMO     = 'o';
+Indices.Symbols.ENSO     = 's';
+Indices.Symbols.Fuel     = 'o';
+Indices.Symbols.HadCRUT  = 'o';
+Indices.Symbols.NAO      = 'v';
+Indices.Symbols.NAM      = 'o';
+Indices.Symbols.QBO      = '^';
+Indices.Symbols.SeaIce   = 'o';
+Indices.Symbols.TSI      = 's';
+Indices.Symbols.SSTs     = 'o';
+Indices.Symbols.Time     = 'd';
+Indices.Symbols.Annual   = 'o';
+Indices.Symbols.AMO      = 'o';
+Indices.Symbols.JetLat   = 'o';
+Indices.Symbols.JetSpeed = 'o';
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                    
 %airports to include. We'll provide two definitions, one a whitelist of

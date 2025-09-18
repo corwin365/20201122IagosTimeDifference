@@ -16,8 +16,10 @@ clear all
 
 %what settings are we using?
 % SettingsID = 'basic_annual';
-% SettingsID = 'basic_noannual';
-SettingsID = 'honolulu_annual';
+% % SettingsID = 'basic_noannual';
+% SettingsID = 'woollings_only';
+SettingsID = 'woollings_noannual';
+% SettingsID = 'honolulu_annual';
 
 %load them
 Settings = load(['data/',SettingsID,'.mat']);
@@ -67,17 +69,17 @@ clear SettingsID  %it's contained in the file we loaded already
 % %split into seasons, and normalise flight times
 % %settings choices locked in here: Choices.MinFlights, Choices.MaxDeviation, Seasons
 % process_seasonsplit(Settings);
-% 
+
 % %generate climate indices for the data
 % %must be done after all filtering and merging, so arrays match flight info
 % %settings choices locked in here: Indices
 % process_climate_indices_v3(Settings);
 % 
-% %compute optimal lags for each index
-% %settings choices locked in here: [none]
-% process_optimal_lags(Settings);
-
-% %cost of each minute of delay, in both CO2 and USD, and total mber of flights over the Atlantic
+%compute optimal lags for each index
+%settings choices locked in here: [none]
+process_optimal_lags(Settings);
+% 
+% %cost of each minute of delay, in both CO2 and USD, and total number of flights over the Atlantic
 % %settings choices locked in here: [none]
 % process_scalefactors(Settings);
 
@@ -90,7 +92,7 @@ clear SettingsID  %it's contained in the file we loaded already
 %  (sensitivity tests are handled 
 %  separately, outside this script)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+% 
 % %climate index independence tests
 % %settings choices locked in here: [none]
 % analysis_index_stat_tests(Settings)
@@ -98,7 +100,7 @@ clear SettingsID  %it's contained in the file we loaded already
 % % %data coverage and climate indices
 % % %settings choices locked in here: [none]
 % analysis_coverageandindices(Settings)
-% 
+
 % %linear trend analysis by season
 % %settings choices locked in here: [none]
 % analysis_linear(Settings)
@@ -128,7 +130,7 @@ clear SettingsID  %it's contained in the file we loaded already
 
 % % linear regression
 % %settings choices locked in here: [none]
-analysis_regression(Settings);
+% analysis_regression(Settings);
 
 % %cost implications, in CO2 and USD
 % % %settings choices locked in here: [none]
@@ -159,8 +161,7 @@ analysis_regression(Settings);
 % %settings choices locked in here: [none]
 % analysis_cruise_v_tp(Settings);
 
-
-
-
+%% data analysis - troposphere v stratosphere
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % analysis_frac_strat_trop(Settings);

@@ -85,3 +85,5 @@ ylabel('Proportion of data in bin')
 title('(d) r(plane height, tropopause height)')
 box on
 grid off
+
+stop

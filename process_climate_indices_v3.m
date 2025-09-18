@@ -54,6 +54,14 @@ Root = Settings.Paths.Indices;
 for iIndex=1:1:numel(Settings.Indices.List)
   
   switch Settings.Indices.List{iIndex}
+    case 'JetSpeed'
+      JetSpeed = load([Root,'/woollings_jet_index.mat']);
+      b = interp1(JetSpeed.Time,JetSpeed.JetSpeed,TimeScale); 
+      clear JetSpeed  
+    case 'JetLat'
+      JetLat = load([Root,'/woollings_jet_index.mat']);
+      b = interp1(JetLat.Time,JetLat.JetLat,TimeScale); 
+      clear JetLat       
     case 'QBO'
       QBO = load([Root,'/QBO.mat']);
       b = interp1(QBO.Time,QBO.QBO,TimeScale); 
